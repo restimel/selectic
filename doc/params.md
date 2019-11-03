@@ -1,9 +1,9 @@
-# Advanced configuration with `params`
+# More configuration with `params`
 
 [Back to documentation index](main.md)
 
-In property `params` you can configure selectic to behave the way you want.
-All configurations set in this property should not change during the component life.
+In property `params` you can configure selectic to behave like you want.
+All configuration set in this property should not change during the component life.
 
 This property is an object with several attributes which are listed below.
 
@@ -106,8 +106,8 @@ Type: `'collapsed'` | `'multiline'`
 `selectOverflow` is to describe how selected options should be displayed when theyr are not enough space to display them all (in _multiple_ mode).
 
 Currently there are two supported behavior:
-* `'collapsed'`: the size of selectic input is not changed. If there is not enough space to display all selected options then it displays the possible ones then displays a _"+x others"_ in a badge (_x_ is the number of not displayed options). It is possible to watch these options with `title` or by opening selectic and see which options are selected. _This is the default value_.
-* `'multiline'`: If there is not enough space to display all selected options then it displays the others on another line. The size of the component can be higher than the allowed space.
+* `'collapsed'`: the size of selectic is not changed. If there is not enough space to display all selected options then it displays the possible ones then displays a _"+x others"_ in a badge (_x_ is the number of not displayed options). It is possible to watch these options with `title` or by opening selectic and see which optins are selected. _This is the default value_.
+* `'multiline'`: If there is not enough space to display all selected options then it displays the other on another line. The size of the component can be higher than the allowed space.
 
 ```html
 <selectic
@@ -141,7 +141,7 @@ Type: `function (option) => option`
 
 This callback function is called when items are displayed in the list. This allows to return specific class, style or icon depending on context, or to display a different text for the same option if it is in the list or in selection area.
 
-As argument, it receives an option item and should also return an option item.
+As argument, it receive an option item and should return also an option item.
 
 ```html
 <selectic
@@ -166,7 +166,7 @@ Type: `function (option) => option`
 
 This callback function is called when items are displayed in the selected area. This allows to return specific class, style or icon depending on context, or to display a different text for ame option if it is in the list or in selection area.
 
-As argument, it receives an option item and should also return an option item.
+As argument, it receive an option item and should return also an option item.
 
 ```html
 <selectic
@@ -194,7 +194,7 @@ It should return a promise which resolves with an object which contains the tota
 ```html
 <selectic
     params={{
-        fetchCallback: (search, offset, limit) => fetch(`list?search=${search}&offset=${offset}&limit=${limit}`),
+        fetchCallback: (search, offset, limit) => fetch(`list?search=${search}&=$offset{offset}&limit=${limit}`),
     }}
     options={optionList}
 />
@@ -252,7 +252,7 @@ Type: `boolean` | `undefined`
 In _multiple_ mode, it is possible to invert the selection.
 However in _dynamic_ mode selectic does not know all options so it cannot select the opposite selections.
 
-To allow this feature in _dynamic_ mode, there is a property `selectionIsExcluded` which means that values returned by `getValue()`, `getSelection()` or emitted events are the ones which are not selected.
+To allow this feature in _dynamic_ mode, there is a porperty `selectionIsExcluded` which means that values returned by `value` are the ones which are not selected.
 
 As this behavior is more complex, it is needed to set `allowRevert` to `true` to enable it.
 
@@ -262,9 +262,7 @@ If `allowRevert` is set to `false`, the action to invert the selection will alwa
 
 If `allowRevert` is set to `true`, the action to invert the selection will always be enabled. The parent of selectic component should support `selectionIsExcluded` property (which can be applied in _dynamic_ mode).
 
-If `allowRevert` is set to `undefined` (is not set), the action to invert the selection will be enabled only if the `selectionIsExcluded` property is not needed (always in _static_ mode, and in _dynamic_ mode when all options are already fetched).
-
-Read [the extended properties documentation](extendedProperties.md) for more information about `selectionIsExcluded`.
+If `allowRevert` is set to `undefined` (is not set), the action to invert the selection will be enabled if it is not needed to use the `selectionIsExcluded` property.
 
 ```html
 <selectic

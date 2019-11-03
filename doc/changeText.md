@@ -9,11 +9,11 @@ There are 3 ways to changes these texts:
 * Change the `texts` property. It changes texts only for the component.
 * Call the `changetexts()` method on the component. It changes texts only for the component.
 
-_Changes done locally are prioritary on changes done globally_.
+_Changes done localy are prioritary on changes done globaly_.
 
 Changing texts on the component with property or with `changetexts()` are equivalent.
 
-They accept the same argument: an object which contains keys of sentences.
+They accepts the same argument: an object which contains keys of sentences.
 
 It is possible to replace only some sentences.
 
@@ -25,11 +25,11 @@ It is possible to replace only some sentences.
 
 * **searching**: This is an information message displayed in options when it is not fetched yet._Default value is `'Searching'`_.
 
-* **cannotSelectAllSearchedItems**: This is an error message displayed if the action _select all_ is triggered but all options are not fetched and `allowRevert` property is not set to `true`. _Default value is `'Cannot select all items: too much items in the search result.'`_.
+* **cannotSelectAllSearchedItems**: This is an error message displayed if the action _select all_ is triggered but all all options are not fetched and `allowRevert` property is not set to `true`. _Default value is `'Cannot select all items: too much items in the search result.'`_.
 
 * **selectAll**: The name of the action to _select all_ options. _Default value is `'Select all'`_.
 
-* **excludeResult**: The name of the action to invert the selection. _Default value is `'Invert selection'`_.
+* **excludeResult**: The name of the action to inverse the selection. _Default value is `'Invert selection'`_.
 
 * **reverseSelection**: The title displayed on icon which means that selection is inverted. _Default value is `'The displayed elements are those not selected.'`_.
 

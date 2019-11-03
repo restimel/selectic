@@ -2,7 +2,7 @@
 
 [Back to documentation index](main.md)
 
-Selectic supports common properties which are related to `<select>` element ([read dom properties document](domProperties.md)), but they are some more which are more related to the nature of selectic.
+Selectic supports common poperties which are related to `<select>` element ([read dom properties document](domProperties.md)), but they are some more wich are more related to the nature of selectic.
 
 ## value
 
@@ -73,7 +73,7 @@ The `texts` property is to change texts in the component.
 
 It is possible to change all texts or only some.
 
-It changes the texts only for this component. To change texts for all selectic components, you should use the static method `changeTexts()`.
+It change the texts only for this component. To change texts for all selectic components, you should use the static method `changeTexts()`.
 
 [Read the documentation about changing text](changeText.md).
 

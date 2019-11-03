@@ -72,7 +72,7 @@ It displays the given text if no option is selected.
 
 ## title
 
-It is added to the main element, and it behaves like `title` attribute of any HTML element when mouse is over the selected area.
+It is added to th emain element, and it behaves like `title` attribute of any HTML element when mouse is over the selected area.
 
 ```html
 <selectic

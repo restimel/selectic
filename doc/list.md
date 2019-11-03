@@ -2,12 +2,12 @@
 
 [Back to documentation index](main.md)
 
-`options` is a props that builds the list of options. It should be an array.
+`options` is a props from which it build the list of options. It should be an array.
 content of this array can be either `string` either an `object` which define the option property.
 
 ## strings[]
 
-In such case id and text displayed will be the same. Their id/text will be the array values.
+In such case id and text displayed will be the same and are the strings which composed the array.
 
 ```javascript
 const items = ['item1', 'second Item'];
@@ -22,7 +22,7 @@ const items = ['item1', 'second Item'];
 
 It is possible to define the `option` more precisely.
 
-* **id** {`string | number`} _(mandatory)_: The option identifier. *It is important that it is unique among all other options*.
+* **id** {`string | number`} _(mandatory)_: The option identifier. *It is important that it is unique inside all options*.
 * **text** {`string`} _(mandatory)_: The text which is displayed to select the option or when it is selected.
 * **title** {`string`}: Text displayed in `title` when cursor is over the option (default: `''`).
 * **disabled** {`boolean`}: if `true` this option cannot be selected (default: `false`).

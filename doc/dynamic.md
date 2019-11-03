@@ -2,8 +2,8 @@
 
 [Back to documentation index](main.md)
 
-The dynamic mode allows to load options dynamically (from a server or from anything else asynchrously).
-The list of options will be built when selectic is open. It fetches the first options and fetch the following ones when it is needed.
+The dynamic mode allows to load options dynamically (from a serveror from anything else asynchrously).
+The list of options will be built when selectic is open. It fetch the first options and fetch the next when it is needed.
 It keeps result in cache to avoid refetching when selectic is open another time.
 
 ## Basic usage
@@ -23,21 +23,21 @@ There are 3 arguments:
 * **offsetItem** (`number`): Only options from this index should be returned.
 * **pageSize** (`number`): The maximum number of options to be returned.
 
-The return should be a promise which resolves with an object containing 2 attributes:
+The return should be a promise which resolve with an object containing 2 attributes:
 
 * **total** (`number`): The total number of options that can be fetched (depending on the search). This information is important to display the correct length of the scroll bar and to let selectic know if there are more options to fetch.
 * **result** (`Options[]`): The list of options which match the request.
 
 ### getItemsCallback
 
-This callback should return option information from an id list.
+This callback should return options information from an id list.
 This is used to display correctly the initial selected options.
 
 There is only one argument:
 
 * ids (`OptionId[]`): list of options id.
 
-The return should be a promise which resolve with an array of `Options`.
+the return should be a promise which resolve with an array of `Options`.
 
 ### Example
 
@@ -83,11 +83,11 @@ function buildItem(id) {
 />
 ```
 
-Of course, the promises can be `fetch()` method.
+Offcourse, the promises can be `fetch()` method.
 
 ## reseting cache
 
-Sometimes it is useful to reset cache when we want a complete different list (because another parameter has changed).
+Sometimes it is usefull to reset cache when we want a complete different list (because another parameter has changed).
 To remove the cache, you should call the method `clearCache()`.
 
 ```javascript
@@ -106,9 +106,8 @@ It works with the multiple attribute. There is nothing more to do.
 
 ## Exclude selection
 
-In _multiple_ mode, selectic offers the possibility to invert the selection (which can be useful to unselect only some options in a very huge list).
-With _dynamic_ options, selectic will not fetch the whole options. So in such case it will set the flag `selectionIsExcluded` which means that all options which are in `value` are the ones which are not selected.
-This up to you to handle this flag. ([Read more information](events.md) about events).
+In multiple mode with dynamic options, it is possible to invert the selection, but selectic will not fetch the whole options. So in such case it will set the flag `selectionIsExcluded` which means that all options which are in `value` are the ones which are not selected.
+This up to you to handle this flag.
 
 If you don't want to activate this feature, then you could set the `allowRevert` attribute in `params` property to `false` ([see more information](params.md) about `params` property).
 

@@ -2,32 +2,28 @@
 
 ## Configuration
 
-* Build a select from a list [(details)](./list.md)
-* Support DOM attributes [(details)](./domProperties.md)
+* Build a select from a list [(detail)](./list.md)
+* Support DOM attributes [(detail)](./domProperties.md)
   * value
   * disabled
   * multiple
   * placeholder
-* Extended attributes [(details)](./extendedProperties.md)
-* Dynamic list [(details)](./dynamic.md)
+* Extended attributes [(detail)](./extendedProperties.md)
+* Dynamic list [(detail)](./dynamic.md)
   * multiple
   * optgroup
-* Advanced configuration [(details)](./params.md)
-* Change texts [(details)](./changeText.md)
+* Advanced configuration [(detail)](./params.md)
+* Change texts [(detail)](./changeText.md)
 
 ## Events
-
-[More details about events in Selectic](./events.md).
 
 * input
 * change
 
 ## Methods
 
-[API details](./methods.md)
-
-* clearCache
-* changeTexts
-* getValue
-* getSelectedItems
-* isEmpty
+* clearCache(forceReset?: boolean): void;
+* changeTexts(texts: PartialMessages): void;
+* getValue(): SelectedValue;
+* getSelectedItems(): OptionValue | OptionValue[];
+* isEmpty(): boolean;
