@@ -1,4 +1,9 @@
-export default {
+import resolve from '@rollup/plugin-node-resolve';
+import pluginReplace from '@rollup/plugin-replace';
+import VuePlugin from 'rollup-plugin-vue';
+import commonjs from 'rollup-plugin-commonjs' ;
+
+export default [{
     input: 'lib/index.js',
     output: [{
         file: 'dist/selectic.common.js',
@@ -12,4 +17,20 @@ export default {
         'vtyx',
     ],
     context: "this",
-}
+}, {
+    input: 'examples/app.js',
+    output: [{
+        file: 'examples/dist/app.js',
+        // exports: "named",
+        format: 'iife',
+    }],
+    plugins: [
+        commonjs(),
+        VuePlugin(),
+        pluginReplace({
+            'process.env.NODE_ENV': JSON.stringify('production'),
+        }),
+        resolve()
+    ],
+    context: "this",
+}];
