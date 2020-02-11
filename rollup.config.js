@@ -7,7 +7,7 @@ export default [{
     input: 'lib/index.js',
     output: [{
         file: 'dist/selectic.common.js',
-        exports: "named",
+        exports: 'named',
         format: 'cjs',
     }, {
         file: 'dist/selectic.esm.js',
@@ -16,12 +16,11 @@ export default [{
     external: [
         'vtyx',
     ],
-    context: "this",
+    context: 'this',
 }, {
     input: 'examples/app.js',
     output: [{
         file: 'examples/dist/app.js',
-        // exports: "named",
         format: 'iife',
     }],
     plugins: [
@@ -32,5 +31,5 @@ export default [{
         }),
         resolve()
     ],
-    context: "this",
+    context: 'this',
 }];
