@@ -22094,22 +22094,153 @@
 
   //
 
+  const emptyOptions = [];
+  const oneOptions = [{
+      id: 'alone',
+      text: 'The only option',
+  }];
+
+  const shortNumOptions = [{
+      id: 0,
+      text: 'First option',
+  }, {
+      id: 1,
+      text: 'Second option',
+  }, {
+      id: 2,
+      text: 'Third option',
+  }, {
+      id: 3,
+      text: 'Fourth option',
+  }];
+
+  const shortStringOptions = [{
+      id: 'first',
+      text: 'First option',
+  }, {
+      id: 'second',
+      text: 'Second option',
+  }, {
+      id: 'third',
+      text: 'Third option',
+  }, {
+      id: 'fourth',
+      text: 'Fourth option',
+  }];
+
+  const longLength = 1500;
+  const longNumOptions = new Array(longLength);
+  const longStringOptions = new Array(longLength);
+  for (let i = 0; i < longLength; i++) {
+      longNumOptions[i] = {
+          id: i,
+          text: `option #${i}`,
+      };
+      longStringOptions[i] = {
+          id: `id-${i}`,
+          text: `option "${i}"`,
+      };
+  }
+
   var script = {
       name: 'Example',
       data() {
           return {
+              draw: true,
+
+              multiple: false,
+              disabled: false,
+              optionValue: null,
+              optionPlaceholder: '',
+              optionTitle: '',
+              optionParams: {
+                  hideFilter: null,
+                  allowClearSelection: undefined,
+                  autoDisabled: undefined,
+              },
+              optionType: 'longNumOptions',
+              optionList: [{
+                  id: 'emptyOptions',
+                  text: `empty option (${emptyOptions.length} items)`,
+                  values: emptyOptions,
+              }, {
+                  id: 'oneOptions',
+                  text: `only one option (${oneOptions.length} items)`,
+                  values: oneOptions,
+              }, {
+                  id: 'shortNumOptions',
+                  text: `short with numerical id (${shortNumOptions.length} items)`,
+                  values: shortNumOptions,
+              }, {
+                  id: 'shortStringOptions',
+                  text: `short with string id (${shortStringOptions.length} items)`,
+                  values: shortStringOptions,
+              }, {
+                  id: 'longNumOptions',
+                  text: `long with numerical id (${longNumOptions.length} items)`,
+                  values: longNumOptions,
+              }],
           };
       },
       computed: {
           options() {
-              var list = [];
-              for (let i = 0; i < 1000; i++) {
-                  list.push({
-                      id: i,
-                      text: 'Item number ' + i,
-                  });
+              const optionType = this.optionType;
+              const optionInfo = this.optionList.find((o) => o.id === optionType);
+              return optionInfo && optionInfo.values || [];
+          },
+          htmlSelectic() {
+              const options = [
+                  `:value="${JSON.stringify(this.optionValue).replace(/"/g, '\'')}"`,
+                  `:options="${this.optionType}"`,
+              ];
+              if (this.optionPlaceholder) {
+                  options.push(`:placeholder="${this.optionPlaceholder}"`);
               }
-              return list;
+              if (this.optionTitle) {
+                  options.push(`:title="${this.optionTitle}"`);
+              }
+              if (this.disabled) {
+                  options.push('disabled');
+              }
+              if (this.multiple) {
+                  options.push('multiple');
+              }
+
+              const paramList = [
+                  'hideFilter', 'allowClearSelection', 'autoDisabled',
+              ].reduce((list, key) => {
+                  const param = this.optionParams[key];
+
+                  if (param !== void 0 && param !== null) {
+                      let val = param;
+
+                      if (typeof param === 'string') {
+                          val = `'${param}'`;
+                      }
+
+                      list.push(`    ${key}: ${val},`);
+                  }
+
+                  return list;
+              }, []);
+              if (paramList.length) {
+                  options.push('', ':params="{', ...paramList, '}"');
+              }
+
+              const html = [
+                  '<Selectic',
+                  ...options.map(o => `    ${o}`),
+                  '/>',
+              ];
+              return html.join('\n');
+          },
+      },
+      methods: {
+          redraw() {
+              this.draw = false;
+              setTimeout(() => {
+                  this.draw = true;
+              }, 10);
           },
       },
       components: {
@@ -22253,36 +22384,331 @@
     var _vm = this;
     var _h = _vm.$createElement;
     var _c = _vm._self._c || _h;
-    return _c(
-      "div",
-      [
-        _c("h1", [_vm._v("Selectic example")]),
+    return _c("div", [
+      _c("fieldset", [
+        _c("legend", [_vm._v("\n            parameters\n        ")]),
         _vm._v(" "),
-        _c("Selectic", {
-          staticClass: "example",
-          attrs: {
-            options: _vm.options,
-            value: 2,
-            params: {
-              autoDisabled: false
-            }
-          }
-        }),
+        _c(
+          "label",
+          [
+            _vm._v("\n            options\n            "),
+            _c("Selectic", {
+              attrs: { value: _vm.optionType, options: _vm.optionList },
+              on: {
+                change: function(val) {
+                  return (_vm.optionType = val)
+                }
+              }
+            })
+          ],
+          1
+        ),
         _vm._v(" "),
-        _c("Selectic", {
-          staticClass: "example",
-          attrs: {
-            options: _vm.options,
-            value: [5, 4],
-            multiple: true,
-            params: {
-              autoDisabled: false
+        _c("label", [
+          _vm._v("\n            title "),
+          _c("input", {
+            directives: [
+              {
+                name: "model",
+                rawName: "v-model",
+                value: _vm.optionTitle,
+                expression: "optionTitle"
+              }
+            ],
+            attrs: { type: "text" },
+            domProps: { value: _vm.optionTitle },
+            on: {
+              input: function($event) {
+                if ($event.target.composing) {
+                  return
+                }
+                _vm.optionTitle = $event.target.value;
+              }
             }
-          }
-        })
-      ],
-      1
-    )
+          })
+        ]),
+        _vm._v(" "),
+        _c("label", [
+          _vm._v("\n            placeholder "),
+          _c("input", {
+            directives: [
+              {
+                name: "model",
+                rawName: "v-model",
+                value: _vm.optionPlaceholder,
+                expression: "optionPlaceholder"
+              }
+            ],
+            attrs: { type: "text" },
+            domProps: { value: _vm.optionPlaceholder },
+            on: {
+              input: function($event) {
+                if ($event.target.composing) {
+                  return
+                }
+                _vm.optionPlaceholder = $event.target.value;
+              }
+            }
+          })
+        ]),
+        _vm._v(" "),
+        _c("label", [
+          _c("input", {
+            directives: [
+              {
+                name: "model",
+                rawName: "v-model",
+                value: _vm.disabled,
+                expression: "disabled"
+              }
+            ],
+            attrs: { type: "checkbox" },
+            domProps: {
+              checked: Array.isArray(_vm.disabled)
+                ? _vm._i(_vm.disabled, null) > -1
+                : _vm.disabled
+            },
+            on: {
+              change: function($event) {
+                var $$a = _vm.disabled,
+                  $$el = $event.target,
+                  $$c = $$el.checked ? true : false;
+                if (Array.isArray($$a)) {
+                  var $$v = null,
+                    $$i = _vm._i($$a, $$v);
+                  if ($$el.checked) {
+                    $$i < 0 && (_vm.disabled = $$a.concat([$$v]));
+                  } else {
+                    $$i > -1 &&
+                      (_vm.disabled = $$a
+                        .slice(0, $$i)
+                        .concat($$a.slice($$i + 1)));
+                  }
+                } else {
+                  _vm.disabled = $$c;
+                }
+              }
+            }
+          }),
+          _vm._v(" disabled\n        ")
+        ]),
+        _vm._v(" "),
+        _c("label", [
+          _c("input", {
+            directives: [
+              {
+                name: "model",
+                rawName: "v-model",
+                value: _vm.multiple,
+                expression: "multiple"
+              }
+            ],
+            attrs: { type: "checkbox" },
+            domProps: {
+              checked: Array.isArray(_vm.multiple)
+                ? _vm._i(_vm.multiple, null) > -1
+                : _vm.multiple
+            },
+            on: {
+              change: function($event) {
+                var $$a = _vm.multiple,
+                  $$el = $event.target,
+                  $$c = $$el.checked ? true : false;
+                if (Array.isArray($$a)) {
+                  var $$v = null,
+                    $$i = _vm._i($$a, $$v);
+                  if ($$el.checked) {
+                    $$i < 0 && (_vm.multiple = $$a.concat([$$v]));
+                  } else {
+                    $$i > -1 &&
+                      (_vm.multiple = $$a
+                        .slice(0, $$i)
+                        .concat($$a.slice($$i + 1)));
+                  }
+                } else {
+                  _vm.multiple = $$c;
+                }
+              }
+            }
+          }),
+          _vm._v(" multiple\n            "),
+          _c(
+            "span",
+            {
+              staticClass: "info",
+              attrs: { title: "only apply at component creation" }
+            },
+            [_vm._v("(at creation)")]
+          )
+        ]),
+        _vm._v(" "),
+        _c("details", [
+          _c("summary", [_vm._v("\n                params\n            ")]),
+          _vm._v(" "),
+          _c(
+            "label",
+            [
+              _vm._v("\n                hideFilter\n                "),
+              _c(
+                "span",
+                {
+                  staticClass: "info",
+                  attrs: { title: "only apply at component creation" }
+                },
+                [_vm._v("(at creation)")]
+              ),
+              _vm._v(" "),
+              _c("Selectic", {
+                attrs: {
+                  value: _vm.optionParams.hideFilter,
+                  options: [
+                    {
+                      id: "auto",
+                      text: "auto"
+                    },
+                    {
+                      id: true,
+                      text: "true"
+                    },
+                    {
+                      id: false,
+                      text: "false"
+                    }
+                  ],
+                  params: {
+                    allowClearSelection: true
+                  }
+                },
+                on: {
+                  change: function(val) {
+                    return (_vm.optionParams.hideFilter = val)
+                  }
+                }
+              })
+            ],
+            1
+          ),
+          _vm._v(" "),
+          _c(
+            "label",
+            [
+              _vm._v("\n                allowClearSelection\n                "),
+              _c(
+                "span",
+                {
+                  staticClass: "info",
+                  attrs: { title: "only apply at component creation" }
+                },
+                [_vm._v("(at creation)")]
+              ),
+              _vm._v(" "),
+              _c("Selectic", {
+                attrs: {
+                  value: _vm.optionParams.allowClearSelection,
+                  options: [
+                    {
+                      id: true,
+                      text: "true"
+                    },
+                    {
+                      id: false,
+                      text: "false"
+                    }
+                  ],
+                  params: {
+                    allowClearSelection: true
+                  }
+                },
+                on: {
+                  change: function(val) {
+                    return (_vm.optionParams.allowClearSelection = val)
+                  }
+                }
+              })
+            ],
+            1
+          ),
+          _vm._v(" "),
+          _c(
+            "label",
+            [
+              _vm._v("\n                autoDisabled\n                "),
+              _c(
+                "span",
+                {
+                  staticClass: "info",
+                  attrs: { title: "only apply at component creation" }
+                },
+                [_vm._v("(at creation)")]
+              ),
+              _vm._v(" "),
+              _c("Selectic", {
+                attrs: {
+                  value: _vm.optionParams.autoDisabled,
+                  options: [
+                    {
+                      id: true,
+                      text: "true"
+                    },
+                    {
+                      id: false,
+                      text: "false"
+                    }
+                  ],
+                  params: {
+                    allowClearSelection: true
+                  }
+                },
+                on: {
+                  change: function(val) {
+                    return (_vm.optionParams.autoDisabled = val)
+                  }
+                }
+              })
+            ],
+            1
+          )
+        ]),
+        _vm._v(" "),
+        _c("button", { on: { click: _vm.redraw } }, [
+          _vm._v("\n            Redraw Selectic component\n        ")
+        ])
+      ]),
+      _vm._v(" "),
+      _c(
+        "fieldset",
+        [
+          _c("legend", [_vm._v("\n            Example\n        ")]),
+          _vm._v(" "),
+          _vm.draw
+            ? _c("Selectic", {
+                staticClass: "example",
+                attrs: {
+                  options: _vm.options,
+                  value: _vm.optionValue,
+                  placeholder: _vm.optionPlaceholder,
+                  title: _vm.optionTitle,
+                  multiple: _vm.multiple,
+                  disabled: _vm.disabled,
+                  params: _vm.optionParams
+                },
+                on: {
+                  change: function(val) {
+                    return (_vm.optionValue = val)
+                  }
+                }
+              })
+            : _vm._e()
+        ],
+        1
+      ),
+      _vm._v(" "),
+      _c("fieldset", [
+        _c("legend", [_vm._v("\n            HTML\n        ")]),
+        _vm._v(" "),
+        _c("pre", [_vm._v(_vm._s(_vm.htmlSelectic))])
+      ])
+    ])
   };
   var __vue_staticRenderFns__ = [];
   __vue_render__._withStripped = true;
@@ -22290,7 +22716,7 @@
     /* style */
     const __vue_inject_styles__ = function (inject) {
       if (!inject) return
-      inject("data-v-ea551228_0", { source: "\n.example {\n    max-width: 500px;\n}\n", map: {"version":3,"sources":["/benoit/programmation/javascript/selectic/examples/Example.vue"],"names":[],"mappings":";AAiDA;IACA,gBAAA;AACA","file":"Example.vue","sourcesContent":["<template>\n<div>\n    <h1>Selectic example</h1>\n    <Selectic\n        class=\"example\"\n        :options=\"options\"\n        :value=\"2\"\n        :params=\"{\n            autoDisabled: false,\n        }\"\n    />\n    <Selectic\n        class=\"example\"\n        :options=\"options\"\n        :value=\"[5, 4]\"\n        :multiple=\"true\"\n        :params=\"{\n            autoDisabled: false,\n        }\"\n    />\n</div>\n</template>\n<script>\nimport Selectic from '../dist/selectic.esm.js';\n\nexport default {\n    name: 'Example',\n    data() {\n        return {\n        };\n    },\n    computed: {\n        options() {\n            var list = [];\n            for (let i = 0; i < 1000; i++) {\n                list.push({\n                    id: i,\n                    text: 'Item number ' + i,\n                });\n            }\n            return list;\n        },\n    },\n    components: {\n        Selectic,\n    },\n}\n</script>\n<style>\n.example {\n    max-width: 500px;\n}\n</style>\n"]}, media: undefined });
+      inject("data-v-35e0d7a6_0", { source: "\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n", map: {"version":3,"sources":["/benoit/programmation/javascript/selectic/examples/components/SelecticParameter.vue"],"names":[],"mappings":";AAmRA;IACA,gBAAA;AACA;AACA;IACA,gBAAA;IACA,kBAAA;IACA,YAAA;AACA","file":"SelecticParameter.vue","sourcesContent":["<template>\n<div>\n    <fieldset>\n        <legend>\n            parameters\n        </legend>\n        <label>\n            options\n            <Selectic\n                :value=\"optionType\"\n                :options=\"optionList\"\n                @change=\"(val) => optionType = val\"\n            />\n        </label>\n        <label>\n            title <input type=\"text\" v-model=\"optionTitle\">\n        </label>\n        <label>\n            placeholder <input type=\"text\" v-model=\"optionPlaceholder\">\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"disabled\"> disabled\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"multiple\"> multiple\n            <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n        </label>\n        <details>\n            <summary>\n                params\n            </summary>\n            <label>\n                hideFilter\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.hideFilter\"\n                    :options=\"[{\n                        id: 'auto',\n                        text: 'auto',\n                    }, {\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.hideFilter = val\"\n                />\n            </label>\n            <label>\n                allowClearSelection\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.allowClearSelection\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.allowClearSelection = val\"\n                />\n            </label>\n            <label>\n                autoDisabled\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.autoDisabled\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.autoDisabled = val\"\n                />\n            </label>\n        </details>\n        <button @click=\"redraw\">\n            Redraw Selectic component\n        </button>\n    </fieldset>\n    <fieldset>\n        <legend>\n            Example\n        </legend>\n        <Selectic v-if=\"draw\"\n            class=\"example\"\n            :options=\"options\"\n            :value=\"optionValue\"\n            :placeholder=\"optionPlaceholder\"\n            :title=\"optionTitle\"\n            :multiple=\"multiple\"\n            :disabled=\"disabled\"\n            :params=\"optionParams\"\n            @change=\"(val) => optionValue = val\"\n        />\n    </fieldset>\n    <fieldset>\n        <legend>\n            HTML\n        </legend>\n        <pre>{{htmlSelectic}}</pre>\n    </fieldset>\n</div>\n</template>\n<script>\nimport Selectic from '../../dist/selectic.esm.js';\n\nconst emptyOptions = [];\nconst oneOptions = [{\n    id: 'alone',\n    text: 'The only option',\n}];\n\nconst shortNumOptions = [{\n    id: 0,\n    text: 'First option',\n}, {\n    id: 1,\n    text: 'Second option',\n}, {\n    id: 2,\n    text: 'Third option',\n}, {\n    id: 3,\n    text: 'Fourth option',\n}];\n\nconst shortStringOptions = [{\n    id: 'first',\n    text: 'First option',\n}, {\n    id: 'second',\n    text: 'Second option',\n}, {\n    id: 'third',\n    text: 'Third option',\n}, {\n    id: 'fourth',\n    text: 'Fourth option',\n}];\n\nconst longLength = 1500;\nconst longNumOptions = new Array(longLength);\nconst longStringOptions = new Array(longLength);\nfor (let i = 0; i < longLength; i++) {\n    longNumOptions[i] = {\n        id: i,\n        text: `option #${i}`,\n    };\n    longStringOptions[i] = {\n        id: `id-${i}`,\n        text: `option \"${i}\"`,\n    };\n}\n\nexport default {\n    name: 'Example',\n    data() {\n        return {\n            draw: true,\n\n            multiple: false,\n            disabled: false,\n            optionValue: null,\n            optionPlaceholder: '',\n            optionTitle: '',\n            optionParams: {\n                hideFilter: null,\n                allowClearSelection: undefined,\n                autoDisabled: undefined,\n            },\n            optionType: 'longNumOptions',\n            optionList: [{\n                id: 'emptyOptions',\n                text: `empty option (${emptyOptions.length} items)`,\n                values: emptyOptions,\n            }, {\n                id: 'oneOptions',\n                text: `only one option (${oneOptions.length} items)`,\n                values: oneOptions,\n            }, {\n                id: 'shortNumOptions',\n                text: `short with numerical id (${shortNumOptions.length} items)`,\n                values: shortNumOptions,\n            }, {\n                id: 'shortStringOptions',\n                text: `short with string id (${shortStringOptions.length} items)`,\n                values: shortStringOptions,\n            }, {\n                id: 'longNumOptions',\n                text: `long with numerical id (${longNumOptions.length} items)`,\n                values: longNumOptions,\n            }],\n        };\n    },\n    computed: {\n        options() {\n            const optionType = this.optionType;\n            const optionInfo = this.optionList.find((o) => o.id === optionType);\n            return optionInfo && optionInfo.values || [];\n        },\n        htmlSelectic() {\n            const options = [\n                `:value=\"${JSON.stringify(this.optionValue).replace(/\"/g, '\\'')}\"`,\n                `:options=\"${this.optionType}\"`,\n            ];\n            if (this.optionPlaceholder) {\n                options.push(`:placeholder=\"${this.optionPlaceholder}\"`);\n            }\n            if (this.optionTitle) {\n                options.push(`:title=\"${this.optionTitle}\"`);\n            }\n            if (this.disabled) {\n                options.push('disabled');\n            }\n            if (this.multiple) {\n                options.push('multiple');\n            }\n\n            const paramList = [\n                'hideFilter', 'allowClearSelection', 'autoDisabled',\n            ].reduce((list, key) => {\n                const param = this.optionParams[key];\n\n                if (param !== void 0 && param !== null) {\n                    let val = param;\n\n                    if (typeof param === 'string') {\n                        val = `'${param}'`;\n                    }\n\n                    list.push(`    ${key}: ${val},`)\n                }\n\n                return list;\n            }, []);\n            if (paramList.length) {\n                options.push('', ':params=\"{', ...paramList, '}\"');\n            }\n\n            const html = [\n                '<Selectic',\n                ...options.map(o => `    ${o}`),\n                '/>',\n            ];\n            return html.join('\\n');\n        },\n    },\n    methods: {\n        redraw() {\n            this.draw = false;\n            setTimeout(() => {\n                this.draw = true;\n            }, 10);\n        },\n    },\n    components: {\n        Selectic,\n    },\n}\n</script>\n<style>\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n</style>\n"]}, media: undefined });
 
     };
     /* scoped */
@@ -22318,8 +22744,86 @@
       undefined
     );
 
+  //
+
+  var script$1 = {
+      name: 'Example',
+      data() {
+          return {
+          };
+      },
+      computed: {
+          options() {
+              var list = [];
+              for (let i = 0; i < 1000; i++) {
+                  list.push({
+                      id: i,
+                      text: 'Item number ' + i,
+                  });
+              }
+              return list;
+          },
+      },
+      components: {
+          Selectic: Selectic$2,
+          SelecticParameter: __vue_component__,
+      },
+  };
+
+  /* script */
+  const __vue_script__$1 = script$1;
+
+  /* template */
+  var __vue_render__$1 = function() {
+    var _vm = this;
+    var _h = _vm.$createElement;
+    var _c = _vm._self._c || _h;
+    return _c(
+      "div",
+      [
+        _c("h1", [_vm._v("Selectic example")]),
+        _vm._v(" "),
+        _c("SelecticParameter")
+      ],
+      1
+    )
+  };
+  var __vue_staticRenderFns__$1 = [];
+  __vue_render__$1._withStripped = true;
+
+    /* style */
+    const __vue_inject_styles__$1 = function (inject) {
+      if (!inject) return
+      inject("data-v-11951cca_0", { source: "\n.example {\n    max-width: 500px;\n}\n", map: {"version":3,"sources":["/benoit/programmation/javascript/selectic/examples/Example.vue"],"names":[],"mappings":";AAmCA;IACA,gBAAA;AACA","file":"Example.vue","sourcesContent":["<template>\n<div>\n    <h1>Selectic example</h1>\n    <SelecticParameter />\n</div>\n</template>\n<script>\nimport Selectic from '../dist/selectic.esm.js';\nimport SelecticParameter from './components/SelecticParameter.vue';\n\nexport default {\n    name: 'Example',\n    data() {\n        return {\n        };\n    },\n    computed: {\n        options() {\n            var list = [];\n            for (let i = 0; i < 1000; i++) {\n                list.push({\n                    id: i,\n                    text: 'Item number ' + i,\n                });\n            }\n            return list;\n        },\n    },\n    components: {\n        Selectic,\n        SelecticParameter,\n    },\n}\n</script>\n<style>\n.example {\n    max-width: 500px;\n}\n</style>\n"]}, media: undefined });
+
+    };
+    /* scoped */
+    const __vue_scope_id__$1 = undefined;
+    /* module identifier */
+    const __vue_module_identifier__$1 = undefined;
+    /* functional template */
+    const __vue_is_functional_template__$1 = false;
+    /* style inject SSR */
+    
+    /* style inject shadow dom */
+    
+
+    
+    const __vue_component__$1 = normalizeComponent(
+      { render: __vue_render__$1, staticRenderFns: __vue_staticRenderFns__$1 },
+      __vue_inject_styles__$1,
+      __vue_script__$1,
+      __vue_scope_id__$1,
+      __vue_is_functional_template__$1,
+      __vue_module_identifier__$1,
+      false,
+      createInjector,
+      undefined,
+      undefined
+    );
+
   new Vue({
-      render: (h) => h(__vue_component__),
+      render: (h) => h(__vue_component__$1),
   }).$mount('#body');
 
 }());

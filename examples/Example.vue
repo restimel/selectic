@@ -1,27 +1,12 @@
 <template>
 <div>
     <h1>Selectic example</h1>
-    <Selectic
-        class="example"
-        :options="options"
-        :value="2"
-        :params="{
-            autoDisabled: false,
-        }"
-    />
-    <Selectic
-        class="example"
-        :options="options"
-        :value="[5, 4]"
-        :multiple="true"
-        :params="{
-            autoDisabled: false,
-        }"
-    />
+    <SelecticParameter />
 </div>
 </template>
 <script>
 import Selectic from '../dist/selectic.esm.js';
+import SelecticParameter from './components/SelecticParameter.vue';
 
 export default {
     name: 'Example',
@@ -43,6 +28,7 @@ export default {
     },
     components: {
         Selectic,
+        SelecticParameter,
     },
 }
 </script>
