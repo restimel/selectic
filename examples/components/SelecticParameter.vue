@@ -1,9 +1,11 @@
+
 <template>
 <div>
     <fieldset>
         <legend>
             parameters
         </legend>
+        <br>
         <label>
             options
             <Selectic
@@ -12,6 +14,7 @@
                 @change="(val) => optionType = val"
             />
         </label>
+        <br>
         <label>
             title <input type="text" v-model="optionTitle">
         </label>
@@ -25,6 +28,7 @@
             <input type="checkbox" v-model="multiple"> multiple
             <span class="info" title="only apply at component creation">(at creation)</span>
         </label>
+        <br>
         <details>
             <summary>
                 params
@@ -69,6 +73,24 @@
                 />
             </label>
             <label>
+                autoSelect
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <Selectic
+                    :value="optionParams.autoSelect"
+                    :options="[{
+                        id: true,
+                        text: 'true',
+                    }, {
+                        id: false,
+                        text: 'false',
+                    }]"
+                    :params="{
+                        allowClearSelection: true,
+                    }"
+                    @change="(val) => optionParams.autoSelect = val"
+                />
+            </label>
+            <label>
                 autoDisabled
                 <span class="info" title="only apply at component creation">(at creation)</span>
                 <Selectic
@@ -86,7 +108,74 @@
                     @change="(val) => optionParams.autoDisabled = val"
                 />
             </label>
+            <label>
+                strictValue
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <Selectic
+                    :value="optionParams.strictValue"
+                    :options="[{
+                        id: true,
+                        text: 'true',
+                    }, {
+                        id: false,
+                        text: 'false',
+                    }]"
+                    :params="{
+                        allowClearSelection: true,
+                    }"
+                    @change="(val) => optionParams.strictValue = val"
+                />
+            </label>
+            <label>
+                selectionOverflow
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <Selectic
+                    :value="optionParams.selectionOverflow"
+                    :options="[{
+                        id: 'multiline',
+                        text: 'multiline',
+                    }, {
+                        id: 'collapsed',
+                        text: 'collapsed',
+                    }]"
+                    :params="{
+                        allowClearSelection: true,
+                    }"
+                    @change="(val) => optionParams.selectionOverflow = val"
+                />
+            </label>
+             <label>
+                emptyValue
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <input
+                    type="text"
+                    :value="selectionOverflow"
+                    :class="{'has-error': !!errorSelectionOverflow}"
+                    :title="errorSelectionOverflow"
+                    placeholder="Enter value in JSON format"
+                    @change="(evt) => selectionOverflow = evt.currentTarget.value"
+                /><br>
+            </label>
+            <label>
+                allowRevert
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <Selectic
+                    :value="optionParams.allowRevert"
+                    :options="[{
+                        id: true,
+                        text: 'true',
+                    }, {
+                        id: false,
+                        text: 'false',
+                    }]"
+                    :params="{
+                        allowClearSelection: true,
+                    }"
+                    @change="(val) => optionParams.allowRevert = val"
+                />
+            </label>
         </details>
+        <hr>
         <button @click="redraw">
             Redraw Selectic component
         </button>
@@ -177,10 +266,17 @@ export default {
             optionValue: null,
             optionPlaceholder: '',
             optionTitle: '',
+            selectionOverflow: '',
+            errorSelectionOverflow: '',
             optionParams: {
-                hideFilter: null,
+                hideFilter: undefined,
                 allowClearSelection: undefined,
+                autoSelect: undefined,
                 autoDisabled: undefined,
+                strictValue: undefined,
+                selectionOverflow: undefined,
+                allowRevert: undefined,
+                emptyValue: undefined,
             },
             optionType: 'longNumOptions',
             optionList: [{
@@ -230,9 +326,7 @@ export default {
                 options.push('multiple');
             }
 
-            const paramList = [
-                'hideFilter', 'allowClearSelection', 'autoDisabled',
-            ].reduce((list, key) => {
+            const paramList = Object.keys(this.optionParams).reduce((list, key) => {
                 const param = this.optionParams[key];
 
                 if (param !== void 0 && param !== null) {
@@ -267,6 +361,20 @@ export default {
             }, 10);
         },
     },
+    watch: {
+        'optionParams.selectionOverflow'() {
+            this.selectionOverflow = JSON.stringify(this.optionParams.selectionOverflow);
+        },
+        selectionOverflow() {
+            try {
+                this.optionParams.selectionOverflow = JSON.parse(this.selectionOverflow);
+            } catch(e) {
+                this.errorSelectionOverflow = e.message;
+                return;
+            }
+            this.errorSelectionOverflow = '';
+        },
+    },
     components: {
         Selectic,
     },
@@ -280,5 +388,8 @@ export default {
     font-size: 0.8em;
     font-style: italic;
     cursor: help;
+}
+.has-error {
+    border-color: red;
 }
 </style>
