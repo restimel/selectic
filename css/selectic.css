@@ -5,6 +5,7 @@
     --selectic-bg: #ffffff;
     --selectic-color-disabled: #787878;
     --selectic-bg-disabled: #eeeeee;
+    --selectic-more-items-bg-disabled: #cccccc;
     --selectic-selected-item-color: #428bca;
     --selectic-active-item-color: #ffffff;
     --selectic-active-item-bg: #66afe9;
@@ -130,6 +131,9 @@
 .selectic-input.disabled {
     cursor: var(--selectic-cursor-disabled, not-allowed);
     background-color: var(--selectic-bg-disabled, #eeeeee);
+}
+.selectic-input.disabled .more-items {
+	background-color: var(--selectic-more-items-bg-disabled);
 }
 
 .selectic-input__selected-items {
