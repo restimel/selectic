@@ -156,7 +156,7 @@
 }
 
 .selectic__extended-list {
-    position: absolute;
+    position: fixed;
     z-index: 2000;
     background-color: var(--selectic-bg, #ffffff);
     box-shadow: 2px 5px 12px 0px #888888;

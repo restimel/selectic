@@ -20269,6 +20269,7 @@
               offsetItem: 0,
               activeItemIdx: -1,
               pageSize: 100,
+              listPosition: 'auto',
               status: {
                   searching: false,
                   errorMessage: '',
@@ -21596,6 +21597,7 @@
           /* }}} */
           /* {{{ data */
           this.topGroup = ' ';
+          this.listHeight = 120;
       }
       /* }}} */
       /* {{{ computed */
@@ -21657,6 +21659,47 @@
               }
           };
       }
+      get bestPosition() {
+          const windowHeight = window.innerHeight;
+          const listHeight = this.listHeight;
+          const inputTop = this.offsetBottom;
+          const inputBottom = this.offsetTop;
+          if (inputBottom + listHeight <= windowHeight) {
+              return 'bottom';
+          }
+          if (listHeight < inputTop) {
+              return 'top';
+          }
+          /* There are not enough space neither at bottom nor at top */
+          return (windowHeight - inputBottom) < inputTop ? 'top' : 'bottom';
+      }
+      get positionStyle() {
+          let listPosition = this.store.state.listPosition;
+          if (listPosition === 'auto') {
+              listPosition = this.bestPosition;
+          }
+          if (listPosition === 'top') {
+              return `
+                top: ${this.offsetBottom}px;
+                left: ${this.offsetLeft}px;
+                width: ${this.width}px;
+                transform: translateY(-100%);
+            `;
+          }
+          return `
+            top: ${this.offsetTop}px;
+            left: ${this.offsetLeft}px;
+            width: ${this.width}px;
+        `;
+      }
+      /* }}} */
+      /* {{{ watch */
+      onFilteredOptionsChange() {
+          Vue$1.nextTick(this.computeListHeight, this);
+      }
+      onHideFilterChange() {
+          Vue$1.nextTick(this.computeListHeight, this);
+      }
       /* }}} */
       /* {{{ methods */
       getGroup(id) {
@@ -21664,11 +21707,16 @@
           const groupName = group || ' ';
           this.topGroup = groupName;
       }
+      computeListHeight() {
+          const box = this.$el.getBoundingClientRect();
+          this.listHeight = box.height;
+      }
       /* }}} */
       /* {{{ Life cycles */
       mounted() {
           document.body.appendChild(this.$el);
           document.body.addEventListener('keydown', this.onKeyDown);
+          this.computeListHeight();
       }
       destroyed() {
           document.body.removeEventListener('keydown', this.onKeyDown);
@@ -21682,11 +21730,7 @@
           const h = this.renderWrapper();
           const store = this.store;
           const state = store.state;
-          return (h("div", { style: `
-                    top: ${this.offsetTop}px;
-                    left: ${this.offsetLeft}px;
-                    width: ${this.width}px;
-                `, class: "selectic__extended-list" },
+          return (h("div", { style: this.positionStyle, class: "selectic__extended-list" },
               !state.hideFilter && (h(Filter, { store: this.store })),
               state.groups.size > 0 && state.totalFilteredOptions > store.itemsPerPage && (h("span", { class: "selectic-item selectic-item--header selectic-item__is-group" }, this.topGroup)),
               h(List$1, { store: store, class: "selectic__extended-list__list-items", on: {
@@ -21709,8 +21753,17 @@
       Prop({ default: 0 })
   ], ExtendedList.prototype, "offsetTop", void 0);
   __decorate$4([
+      Prop({ default: 0 })
+  ], ExtendedList.prototype, "offsetBottom", void 0);
+  __decorate$4([
       Prop({ default: 300 })
   ], ExtendedList.prototype, "width", void 0);
+  __decorate$4([
+      Watch('store.state.filteredOptions')
+  ], ExtendedList.prototype, "onFilteredOptionsChange", null);
+  __decorate$4([
+      Watch('store.state.hideFilter')
+  ], ExtendedList.prototype, "onHideFilterChange", null);
   ExtendedList = __decorate$4([
       Component
   ], ExtendedList);
@@ -21734,6 +21787,7 @@
           /* }}} */
           /* {{{ data */
           this.offsetTop = 0;
+          this.offsetBottom = 0;
           this.offsetLeft = 0;
           this.width = 0;
           this.store = {};
@@ -21841,36 +21895,36 @@
               /* This method has been called too soon (before render function) */
               return;
           }
-          let el = mainInput.$el;
-          let offsetLeft = el.offsetLeft;
-          let offsetTop = el.offsetTop + el.offsetHeight;
-          const elRootElement = document.body.parentElement;
-          let isFixed = getComputedStyle(el).getPropertyValue('position') === 'fixed';
-          el = el.offsetParent;
-          while (el) {
-              if (!doNotAddListener) {
+          const mainEl = mainInput.$el;
+          const _elementsListeners = this._elementsListeners;
+          /* add listeners */
+          if (!doNotAddListener) {
+              let el = mainInput.$el;
+              while (el) {
                   el.addEventListener('scroll', this.scrollListener, { passive: true });
-                  this._elementsListeners.push(el);
+                  _elementsListeners.push(el);
+                  el = el.parentElement;
               }
-              offsetLeft += el.offsetLeft - el.scrollLeft;
-              offsetTop += el.offsetTop - el.scrollTop;
-              isFixed = isFixed || getComputedStyle(el).getPropertyValue('position') === 'fixed';
-              el = el.offsetParent;
+              /* Listening to window allows to listen to html/body scroll events for some browser (like Chrome) */
+              window.addEventListener('scroll', this.scrollListener, { passive: true });
+              _elementsListeners.push(window);
           }
-          /* Adjust offset for element inside fixed elements */
-          if (isFixed) {
-              offsetLeft += elRootElement.scrollLeft;
-              offsetTop += elRootElement.scrollTop;
-          }
+          const box = mainEl.getBoundingClientRect();
+          /* To put the list at bottom of the input */
+          const offsetTop = box.bottom;
+          const offsetLeft = box.left;
+          /* To put the list at top of the input */
+          const offsetBottom = box.top;
           this.offsetLeft = offsetLeft;
-          this.offsetTop = offsetTop + 1;
+          this.offsetTop = offsetTop;
+          this.offsetBottom = offsetBottom;
       }
       removeListeners() {
           this._elementsListeners.forEach((el) => {
               el.removeEventListener('scroll', this.scrollListener, { passive: true });
           });
           this._elementsListeners = [];
-          document.body.removeEventListener('click', this.outsideListener, true);
+          document.removeEventListener('click', this.outsideListener, true);
           window.removeEventListener('resize', this.windowResize, false);
       }
       focusToggled() {
@@ -21878,7 +21932,7 @@
           if (this.isFocused) {
               this.computeWidth();
               window.addEventListener('resize', this.windowResize, false);
-              document.body.addEventListener('click', this.outsideListener, true);
+              document.addEventListener('click', this.outsideListener, true);
               this.computeOffset();
           }
           else {
@@ -21992,6 +22046,7 @@
                       placeholder: this.placeholder,
                       formatOption: this.params.formatOption,
                       formatSelection: this.params.formatSelection,
+                      listPosition: this.params.listPosition || 'auto',
                   },
                   fetchCallback: this.params.fetchCallback,
                   getItemsCallback: this.params.getItemsCallback,
@@ -22017,7 +22072,7 @@
               h(MainInput, { store: this.store, id: id, on: {
                       'item:click': (id) => this.$emit('item:click', id),
                   }, ref: "mainInput" }),
-              this.isFocused && (h(ExtendedList$1, { store: this.store, offsetTop: this.offsetTop, offsetLeft: this.offsetLeft, width: this.width, ref: "extendedList" }))));
+              this.isFocused && (h(ExtendedList$1, { store: this.store, offsetTop: this.offsetTop, offsetBottom: this.offsetBottom, offsetLeft: this.offsetLeft, width: this.width, ref: "extendedList" }))));
       }
   };
   __decorate$5([
@@ -22164,6 +22219,7 @@
                   selectionOverflow: undefined,
                   allowRevert: undefined,
                   emptyValue: undefined,
+                  listPosition: undefined,
               },
               optionType: 'longNumOptions',
               optionList: [{
@@ -22880,6 +22936,50 @@
               })
             ],
             1
+          ),
+          _vm._v(" "),
+          _c(
+            "label",
+            [
+              _vm._v("\n                listPosition\n                "),
+              _c(
+                "span",
+                {
+                  staticClass: "info",
+                  attrs: { title: "only apply at component creation" }
+                },
+                [_vm._v("(at creation)")]
+              ),
+              _vm._v(" "),
+              _c("Selectic", {
+                attrs: {
+                  value: _vm.optionParams.listPosition,
+                  options: [
+                    {
+                      id: "auto",
+                      text: "auto"
+                    },
+                    {
+                      id: "bottom",
+                      text: "bottom"
+                    },
+                    {
+                      id: "top",
+                      text: "top"
+                    }
+                  ],
+                  params: {
+                    allowClearSelection: true
+                  }
+                },
+                on: {
+                  change: function(val) {
+                    return (_vm.optionParams.listPosition = val)
+                  }
+                }
+              })
+            ],
+            1
           )
         ]),
         _vm._v(" "),
@@ -22931,7 +23031,7 @@
     /* style */
     const __vue_inject_styles__ = function (inject) {
       if (!inject) return
-      inject("data-v-2c55475a_0", { source: "\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n.has-error {\n    border-color: red;\n}\n", map: {"version":3,"sources":["/benoit/programmation/javascript/selectic/examples/components/SelecticParameter.vue"],"names":[],"mappings":";AA+XA;IACA,gBAAA;AACA;AACA;IACA,gBAAA;IACA,kBAAA;IACA,YAAA;AACA;AACA;IACA,iBAAA;AACA","file":"SelecticParameter.vue","sourcesContent":["\n<template>\n<div>\n    <fieldset>\n        <legend>\n            parameters\n        </legend>\n        <br>\n        <label>\n            options\n            <Selectic\n                :value=\"optionType\"\n                :options=\"optionList\"\n                @change=\"(val) => optionType = val\"\n            />\n        </label>\n        <br>\n        <label>\n            title <input type=\"text\" v-model=\"optionTitle\">\n        </label>\n        <label>\n            placeholder <input type=\"text\" v-model=\"optionPlaceholder\">\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"disabled\"> disabled\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"multiple\"> multiple\n            <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n        </label>\n        <br>\n        <details>\n            <summary>\n                params\n            </summary>\n            <label>\n                hideFilter\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.hideFilter\"\n                    :options=\"[{\n                        id: 'auto',\n                        text: 'auto',\n                    }, {\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.hideFilter = val\"\n                />\n            </label>\n            <label>\n                allowClearSelection\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.allowClearSelection\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.allowClearSelection = val\"\n                />\n            </label>\n            <label>\n                autoSelect\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.autoSelect\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.autoSelect = val\"\n                />\n            </label>\n            <label>\n                autoDisabled\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.autoDisabled\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.autoDisabled = val\"\n                />\n            </label>\n            <label>\n                strictValue\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.strictValue\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.strictValue = val\"\n                />\n            </label>\n            <label>\n                selectionOverflow\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.selectionOverflow\"\n                    :options=\"[{\n                        id: 'multiline',\n                        text: 'multiline',\n                    }, {\n                        id: 'collapsed',\n                        text: 'collapsed',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.selectionOverflow = val\"\n                />\n            </label>\n             <label>\n                emptyValue\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <input\n                    type=\"text\"\n                    :value=\"selectionOverflow\"\n                    :class=\"{'has-error': !!errorSelectionOverflow}\"\n                    :title=\"errorSelectionOverflow\"\n                    placeholder=\"Enter value in JSON format\"\n                    @change=\"(evt) => selectionOverflow = evt.currentTarget.value\"\n                /><br>\n            </label>\n            <label>\n                allowRevert\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.allowRevert\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.allowRevert = val\"\n                />\n            </label>\n        </details>\n        <hr>\n        <button @click=\"redraw\">\n            Redraw Selectic component\n        </button>\n    </fieldset>\n    <fieldset>\n        <legend>\n            Example\n        </legend>\n        <Selectic v-if=\"draw\"\n            class=\"example\"\n            :options=\"options\"\n            :value=\"optionValue\"\n            :placeholder=\"optionPlaceholder\"\n            :title=\"optionTitle\"\n            :multiple=\"multiple\"\n            :disabled=\"disabled\"\n            :params=\"optionParams\"\n            @change=\"(val) => optionValue = val\"\n        />\n    </fieldset>\n    <fieldset>\n        <legend>\n            HTML\n        </legend>\n        <pre>{{htmlSelectic}}</pre>\n    </fieldset>\n</div>\n</template>\n<script>\nimport Selectic from '../../dist/selectic.esm.js';\n\nconst emptyOptions = [];\nconst oneOptions = [{\n    id: 'alone',\n    text: 'The only option',\n}];\n\nconst shortNumOptions = [{\n    id: 0,\n    text: 'First option',\n}, {\n    id: 1,\n    text: 'Second option',\n}, {\n    id: 2,\n    text: 'Third option',\n}, {\n    id: 3,\n    text: 'Fourth option',\n}];\n\nconst shortStringOptions = [{\n    id: 'first',\n    text: 'First option',\n}, {\n    id: 'second',\n    text: 'Second option',\n}, {\n    id: 'third',\n    text: 'Third option',\n}, {\n    id: 'fourth',\n    text: 'Fourth option',\n}];\n\nconst longLength = 1500;\nconst longNumOptions = new Array(longLength);\nconst longStringOptions = new Array(longLength);\nfor (let i = 0; i < longLength; i++) {\n    longNumOptions[i] = {\n        id: i,\n        text: `option #${i}`,\n    };\n    longStringOptions[i] = {\n        id: `id-${i}`,\n        text: `option \"${i}\"`,\n    };\n}\n\nexport default {\n    name: 'Example',\n    data() {\n        return {\n            draw: true,\n\n            multiple: false,\n            disabled: false,\n            optionValue: null,\n            optionPlaceholder: '',\n            optionTitle: '',\n            selectionOverflow: '',\n            errorSelectionOverflow: '',\n            optionParams: {\n                hideFilter: undefined,\n                allowClearSelection: undefined,\n                autoSelect: undefined,\n                autoDisabled: undefined,\n                strictValue: undefined,\n                selectionOverflow: undefined,\n                allowRevert: undefined,\n                emptyValue: undefined,\n            },\n            optionType: 'longNumOptions',\n            optionList: [{\n                id: 'emptyOptions',\n                text: `empty option (${emptyOptions.length} items)`,\n                values: emptyOptions,\n            }, {\n                id: 'oneOptions',\n                text: `only one option (${oneOptions.length} items)`,\n                values: oneOptions,\n            }, {\n                id: 'shortNumOptions',\n                text: `short with numerical id (${shortNumOptions.length} items)`,\n                values: shortNumOptions,\n            }, {\n                id: 'shortStringOptions',\n                text: `short with string id (${shortStringOptions.length} items)`,\n                values: shortStringOptions,\n            }, {\n                id: 'longNumOptions',\n                text: `long with numerical id (${longNumOptions.length} items)`,\n                values: longNumOptions,\n            }],\n        };\n    },\n    computed: {\n        options() {\n            const optionType = this.optionType;\n            const optionInfo = this.optionList.find((o) => o.id === optionType);\n            return optionInfo && optionInfo.values || [];\n        },\n        htmlSelectic() {\n            const options = [\n                `:value=\"${JSON.stringify(this.optionValue).replace(/\"/g, '\\'')}\"`,\n                `:options=\"${this.optionType}\"`,\n            ];\n            if (this.optionPlaceholder) {\n                options.push(`:placeholder=\"${this.optionPlaceholder}\"`);\n            }\n            if (this.optionTitle) {\n                options.push(`:title=\"${this.optionTitle}\"`);\n            }\n            if (this.disabled) {\n                options.push('disabled');\n            }\n            if (this.multiple) {\n                options.push('multiple');\n            }\n\n            const paramList = Object.keys(this.optionParams).reduce((list, key) => {\n                const param = this.optionParams[key];\n\n                if (param !== void 0 && param !== null) {\n                    let val = param;\n\n                    if (typeof param === 'string') {\n                        val = `'${param}'`;\n                    }\n\n                    list.push(`    ${key}: ${val},`)\n                }\n\n                return list;\n            }, []);\n            if (paramList.length) {\n                options.push('', ':params=\"{', ...paramList, '}\"');\n            }\n\n            const html = [\n                '<Selectic',\n                ...options.map(o => `    ${o}`),\n                '/>',\n            ];\n            return html.join('\\n');\n        },\n    },\n    methods: {\n        redraw() {\n            this.draw = false;\n            setTimeout(() => {\n                this.draw = true;\n            }, 10);\n        },\n    },\n    watch: {\n        'optionParams.selectionOverflow'() {\n            this.selectionOverflow = JSON.stringify(this.optionParams.selectionOverflow);\n        },\n        selectionOverflow() {\n            try {\n                this.optionParams.selectionOverflow = JSON.parse(this.selectionOverflow);\n            } catch(e) {\n                this.errorSelectionOverflow = e.message;\n                return;\n            }\n            this.errorSelectionOverflow = '';\n        },\n    },\n    components: {\n        Selectic,\n    },\n}\n</script>\n<style>\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n.has-error {\n    border-color: red;\n}\n</style>\n"]}, media: undefined });
+      inject("data-v-48721c7a_0", { source: "\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n.has-error {\n    border-color: red;\n}\n", map: {"version":3,"sources":["/benoit/programmation/javascript/selectic/examples/components/SelecticParameter.vue"],"names":[],"mappings":";AAqZA;IACA,gBAAA;AACA;AACA;IACA,gBAAA;IACA,kBAAA;IACA,YAAA;AACA;AACA;IACA,iBAAA;AACA","file":"SelecticParameter.vue","sourcesContent":["\n<template>\n<div>\n    <fieldset>\n        <legend>\n            parameters\n        </legend>\n        <br>\n        <label>\n            options\n            <Selectic\n                :value=\"optionType\"\n                :options=\"optionList\"\n                @change=\"(val) => optionType = val\"\n            />\n        </label>\n        <br>\n        <label>\n            title <input type=\"text\" v-model=\"optionTitle\">\n        </label>\n        <label>\n            placeholder <input type=\"text\" v-model=\"optionPlaceholder\">\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"disabled\"> disabled\n        </label>\n        <label>\n            <input type=\"checkbox\" v-model=\"multiple\"> multiple\n            <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n        </label>\n        <br>\n        <details>\n            <summary>\n                params\n            </summary>\n            <label>\n                hideFilter\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.hideFilter\"\n                    :options=\"[{\n                        id: 'auto',\n                        text: 'auto',\n                    }, {\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.hideFilter = val\"\n                />\n            </label>\n            <label>\n                allowClearSelection\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.allowClearSelection\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.allowClearSelection = val\"\n                />\n            </label>\n            <label>\n                autoSelect\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.autoSelect\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.autoSelect = val\"\n                />\n            </label>\n            <label>\n                autoDisabled\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.autoDisabled\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.autoDisabled = val\"\n                />\n            </label>\n            <label>\n                strictValue\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.strictValue\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.strictValue = val\"\n                />\n            </label>\n            <label>\n                selectionOverflow\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.selectionOverflow\"\n                    :options=\"[{\n                        id: 'multiline',\n                        text: 'multiline',\n                    }, {\n                        id: 'collapsed',\n                        text: 'collapsed',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.selectionOverflow = val\"\n                />\n            </label>\n             <label>\n                emptyValue\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <input\n                    type=\"text\"\n                    :value=\"selectionOverflow\"\n                    :class=\"{'has-error': !!errorSelectionOverflow}\"\n                    :title=\"errorSelectionOverflow\"\n                    placeholder=\"Enter value in JSON format\"\n                    @change=\"(evt) => selectionOverflow = evt.currentTarget.value\"\n                /><br>\n            </label>\n            <label>\n                allowRevert\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.allowRevert\"\n                    :options=\"[{\n                        id: true,\n                        text: 'true',\n                    }, {\n                        id: false,\n                        text: 'false',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.allowRevert = val\"\n                />\n            </label>\n            <label>\n                listPosition\n                <span class=\"info\" title=\"only apply at component creation\">(at creation)</span>\n                <Selectic\n                    :value=\"optionParams.listPosition\"\n                    :options=\"[{\n                        id: 'auto',\n                        text: 'auto',\n                    }, {\n                        id: 'bottom',\n                        text: 'bottom',\n                    }, {\n                        id: 'top',\n                        text: 'top',\n                    }]\"\n                    :params=\"{\n                        allowClearSelection: true,\n                    }\"\n                    @change=\"(val) => optionParams.listPosition = val\"\n                />\n            </label>\n        </details>\n        <hr>\n        <button @click=\"redraw\">\n            Redraw Selectic component\n        </button>\n    </fieldset>\n    <fieldset>\n        <legend>\n            Example\n        </legend>\n        <Selectic v-if=\"draw\"\n            class=\"example\"\n            :options=\"options\"\n            :value=\"optionValue\"\n            :placeholder=\"optionPlaceholder\"\n            :title=\"optionTitle\"\n            :multiple=\"multiple\"\n            :disabled=\"disabled\"\n            :params=\"optionParams\"\n            @change=\"(val) => optionValue = val\"\n        />\n    </fieldset>\n    <fieldset>\n        <legend>\n            HTML\n        </legend>\n        <pre>{{htmlSelectic}}</pre>\n    </fieldset>\n</div>\n</template>\n<script>\nimport Selectic from '../../dist/selectic.esm.js';\n\nconst emptyOptions = [];\nconst oneOptions = [{\n    id: 'alone',\n    text: 'The only option',\n}];\n\nconst shortNumOptions = [{\n    id: 0,\n    text: 'First option',\n}, {\n    id: 1,\n    text: 'Second option',\n}, {\n    id: 2,\n    text: 'Third option',\n}, {\n    id: 3,\n    text: 'Fourth option',\n}];\n\nconst shortStringOptions = [{\n    id: 'first',\n    text: 'First option',\n}, {\n    id: 'second',\n    text: 'Second option',\n}, {\n    id: 'third',\n    text: 'Third option',\n}, {\n    id: 'fourth',\n    text: 'Fourth option',\n}];\n\nconst longLength = 1500;\nconst longNumOptions = new Array(longLength);\nconst longStringOptions = new Array(longLength);\nfor (let i = 0; i < longLength; i++) {\n    longNumOptions[i] = {\n        id: i,\n        text: `option #${i}`,\n    };\n    longStringOptions[i] = {\n        id: `id-${i}`,\n        text: `option \"${i}\"`,\n    };\n}\n\nexport default {\n    name: 'Example',\n    data() {\n        return {\n            draw: true,\n\n            multiple: false,\n            disabled: false,\n            optionValue: null,\n            optionPlaceholder: '',\n            optionTitle: '',\n            selectionOverflow: '',\n            errorSelectionOverflow: '',\n            optionParams: {\n                hideFilter: undefined,\n                allowClearSelection: undefined,\n                autoSelect: undefined,\n                autoDisabled: undefined,\n                strictValue: undefined,\n                selectionOverflow: undefined,\n                allowRevert: undefined,\n                emptyValue: undefined,\n                listPosition: undefined,\n            },\n            optionType: 'longNumOptions',\n            optionList: [{\n                id: 'emptyOptions',\n                text: `empty option (${emptyOptions.length} items)`,\n                values: emptyOptions,\n            }, {\n                id: 'oneOptions',\n                text: `only one option (${oneOptions.length} items)`,\n                values: oneOptions,\n            }, {\n                id: 'shortNumOptions',\n                text: `short with numerical id (${shortNumOptions.length} items)`,\n                values: shortNumOptions,\n            }, {\n                id: 'shortStringOptions',\n                text: `short with string id (${shortStringOptions.length} items)`,\n                values: shortStringOptions,\n            }, {\n                id: 'longNumOptions',\n                text: `long with numerical id (${longNumOptions.length} items)`,\n                values: longNumOptions,\n            }],\n        };\n    },\n    computed: {\n        options() {\n            const optionType = this.optionType;\n            const optionInfo = this.optionList.find((o) => o.id === optionType);\n            return optionInfo && optionInfo.values || [];\n        },\n        htmlSelectic() {\n            const options = [\n                `:value=\"${JSON.stringify(this.optionValue).replace(/\"/g, '\\'')}\"`,\n                `:options=\"${this.optionType}\"`,\n            ];\n            if (this.optionPlaceholder) {\n                options.push(`:placeholder=\"${this.optionPlaceholder}\"`);\n            }\n            if (this.optionTitle) {\n                options.push(`:title=\"${this.optionTitle}\"`);\n            }\n            if (this.disabled) {\n                options.push('disabled');\n            }\n            if (this.multiple) {\n                options.push('multiple');\n            }\n\n            const paramList = Object.keys(this.optionParams).reduce((list, key) => {\n                const param = this.optionParams[key];\n\n                if (param !== void 0 && param !== null) {\n                    let val = param;\n\n                    if (typeof param === 'string') {\n                        val = `'${param}'`;\n                    }\n\n                    list.push(`    ${key}: ${val},`)\n                }\n\n                return list;\n            }, []);\n            if (paramList.length) {\n                options.push('', ':params=\"{', ...paramList, '}\"');\n            }\n\n            const html = [\n                '<Selectic',\n                ...options.map(o => `    ${o}`),\n                '/>',\n            ];\n            return html.join('\\n');\n        },\n    },\n    methods: {\n        redraw() {\n            this.draw = false;\n            setTimeout(() => {\n                this.draw = true;\n            }, 10);\n        },\n    },\n    watch: {\n        'optionParams.selectionOverflow'() {\n            this.selectionOverflow = JSON.stringify(this.optionParams.selectionOverflow);\n        },\n        selectionOverflow() {\n            try {\n                this.optionParams.selectionOverflow = JSON.parse(this.selectionOverflow);\n            } catch(e) {\n                this.errorSelectionOverflow = e.message;\n                return;\n            }\n            this.errorSelectionOverflow = '';\n        },\n    },\n    components: {\n        Selectic,\n    },\n}\n</script>\n<style>\n.example {\n    max-width: 500px;\n}\n.info {\n    font-size: 0.8em;\n    font-style: italic;\n    cursor: help;\n}\n.has-error {\n    border-color: red;\n}\n</style>\n"]}, media: undefined });
 
     };
     /* scoped */

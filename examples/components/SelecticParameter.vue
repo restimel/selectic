@@ -174,6 +174,27 @@
                     @change="(val) => optionParams.allowRevert = val"
                 />
             </label>
+            <label>
+                listPosition
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <Selectic
+                    :value="optionParams.listPosition"
+                    :options="[{
+                        id: 'auto',
+                        text: 'auto',
+                    }, {
+                        id: 'bottom',
+                        text: 'bottom',
+                    }, {
+                        id: 'top',
+                        text: 'top',
+                    }]"
+                    :params="{
+                        allowClearSelection: true,
+                    }"
+                    @change="(val) => optionParams.listPosition = val"
+                />
+            </label>
         </details>
         <hr>
         <button @click="redraw">
@@ -277,6 +298,7 @@ export default {
                 selectionOverflow: undefined,
                 allowRevert: undefined,
                 emptyValue: undefined,
+                listPosition: undefined,
             },
             optionType: 'longNumOptions',
             optionList: [{
