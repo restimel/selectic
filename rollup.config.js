@@ -32,4 +32,18 @@ export default [{
         resolve()
     ],
     context: 'this',
+}, {
+    input: 'lib/Store.js',
+    output: [{
+        file: 'test/dist/Store.js',
+        exports: 'named',
+        format: 'cjs',
+    }, {
+        file: 'test/dist/Store.esm.js',
+        format: 'esm',
+    }],
+    external: [
+        'vtyx',
+    ],
+    context: 'this',
 }];
