@@ -159,6 +159,9 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
                 }
                 break;
             case 'isOpen':
+                if (closePreviousSelectic === this.closeSelectic) {
+                    closePreviousSelectic = undefined;
+                }
                 if (value) {
                     if (this.state.disabled) {
                         this.commit('isOpen', false);
@@ -171,10 +174,9 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
                     if (typeof closePreviousSelectic === 'function') {
                         closePreviousSelectic();
                     }
-                    closePreviousSelectic = this.closeSelectic;
-                }
-                else if (closePreviousSelectic === this.closeSelectic) {
-                    closePreviousSelectic = undefined;
+                    if (!this.keepOpenWithOtherSelectic) {
+                        closePreviousSelectic = this.closeSelectic;
+                    }
                 }
                 break;
             case 'offsetItem':
@@ -366,7 +368,19 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
     /* {{{ private methods */
     hasValue(id) {
         const allOptions = this.state.allOptions;
-        return id === null || allOptions.some((option) => option.id === id);
+        if (id === null) {
+            return true;
+        }
+        return !!this.getValue(id);
+    }
+    getValue(id) {
+        function findId(option) {
+            return option.id === id;
+        }
+        return this.state.filteredOptions.find(findId) ||
+            this.state.dynOptions.find(findId) ||
+            this.getListOptions().find(findId) ||
+            this.getElementOptions().find(findId);
     }
     assertCorrectValue(forceStrict = false) {
         const state = this.state;
@@ -435,57 +449,88 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
         });
     }
     /* XXX: This is not a computed property to avoid consuming more memory */
-    getStaticOptions() {
+    getListOptions() {
         const options = this.options;
-        const staticOptions = [];
+        const listOptions = [];
         if (!Array.isArray(options)) {
-            return staticOptions;
+            return listOptions;
         }
         options.forEach((option) => {
             /* manage simple string */
             if (typeof option === 'string') {
-                staticOptions.push({
+                listOptions.push({
                     id: option,
                     text: option,
                 });
                 return;
             }
             const group = option.group;
-            const options = option.options;
+            const subOptions = option.options;
             /* check for groups */
             if (group && !this.state.groups.has(group)) {
                 this.state.groups.set(group, String(group));
             }
             /* check for sub options */
-            if (options) {
+            if (subOptions) {
                 const groupId = option.id;
                 this.state.groups.set(groupId, option.text);
-                options.forEach((subOpt) => {
+                subOptions.forEach((subOpt) => {
                     subOpt.group = groupId;
                 });
-                staticOptions.push(...options);
+                listOptions.push(...subOptions);
                 return;
             }
-            staticOptions.push(option);
+            listOptions.push(option);
         });
-        return staticOptions;
+        return listOptions;
+    }
+    /* XXX: This is not a computed property to avoid consuming more memory */
+    getElementOptions() {
+        const options = this.childOptions;
+        const childOptions = [];
+        if (!Array.isArray(options)) {
+            return childOptions;
+        }
+        options.forEach((option) => {
+            const group = option.group;
+            const subOptions = option.options;
+            /* check for groups */
+            if (group && !this.state.groups.has(group)) {
+                this.state.groups.set(group, String(group));
+            }
+            /* check for sub options */
+            if (subOptions) {
+                const groupId = option.id;
+                this.state.groups.set(groupId, option.text);
+                subOptions.forEach((subOpt) => {
+                    subOpt.group = groupId;
+                });
+                childOptions.push(...subOptions);
+                return;
+            }
+            childOptions.push(option);
+        });
+        return childOptions;
     }
     buildAllOptions(keepFetched = false) {
         const allOptions = [];
-        let staticOptions = [];
+        let listOptions = [];
+        let elementOptions = [];
         const optionBehaviorOrder = this.state.optionBehaviorOrder;
         let length = Infinity;
         const arrayFromOrder = (orderValue) => {
             switch (orderValue) {
-                case 'O': return staticOptions;
+                case 'O': return listOptions;
                 case 'D': return this.state.dynOptions;
+                case 'E': return elementOptions;
             }
             return [];
         };
         const lengthFromOrder = (orderValue) => {
             switch (orderValue) {
-                case 'O': return staticOptions.length;
+                case 'O': return listOptions.length;
                 case 'D': return this.state.totalDynOptions;
+                case 'E': return elementOptions.length;
             }
             return 0;
         };
@@ -498,7 +543,8 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
                 this.state.totalDynOptions = 0;
             }
         }
-        staticOptions = this.getStaticOptions();
+        listOptions = this.getListOptions();
+        elementOptions = this.getElementOptions();
         if (this.state.optionBehaviorOperation === 'force') {
             const orderValue = optionBehaviorOrder.find((value) => lengthFromOrder(value) > 0);
             allOptions.push(...arrayFromOrder(orderValue));
@@ -739,7 +785,10 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
             }
             switch (order) {
                 case 'O':
-                    options = this.filterOptions(this.getStaticOptions(), search);
+                    options = this.filterOptions(this.getListOptions(), search);
+                    break;
+                case 'E':
+                    options = this.filterOptions(this.getElementOptions(), search);
                     break;
             }
             this.state.filteredOptions.push(...options);
@@ -758,10 +807,7 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
     hasItemInStore(id) {
         let item = this.cacheItem.get(id);
         if (!item) {
-            item = this.state.filteredOptions.find((option) => option.id === id);
-            if (!item) {
-                item = this.state.allOptions.find((option) => option.id === id);
-            }
+            item = this.getValue(id);
             if (item) {
                 this.cacheItem.set(item.id, item);
             }
@@ -846,10 +892,11 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
     checkAutoDisabled() {
         const state = this.state;
         const doNotCheck = this.disabled || this.isPartial || !state.autoDisabled;
-        if (doNotCheck) {
+        if (doNotCheck || !this.hasFetchedAllItems) {
             return;
         }
-        const nb = state.totalAllOptions;
+        const enabledOptions = state.allOptions.filter((opt) => !opt.disabled);
+        const nb = enabledOptions.length;
         const value = state.internalValue;
         const hasValue = Array.isArray(value) ? value.length > 0 : value !== null;
         const isEmpty = nb === 0;
@@ -878,6 +925,12 @@ let SelecticStore = class SelecticStore extends vtyx.Vue {
     /* }}} */
     /* {{{ watch */
     onOptionsChange() {
+        this.cacheItem.clear();
+        this.buildAllOptions();
+        this.assertCorrectValue();
+        this.buildSelectedOptions();
+    }
+    onChildOptionsChange() {
         this.cacheItem.clear();
         this.buildAllOptions();
         this.assertCorrectValue();
@@ -952,6 +1005,9 @@ __decorate([
     vtyx.Prop()
 ], SelecticStore.prototype, "options", void 0);
 __decorate([
+    vtyx.Prop()
+], SelecticStore.prototype, "childOptions", void 0);
+__decorate([
     vtyx.Prop({ default: () => [] })
 ], SelecticStore.prototype, "groups", void 0);
 __decorate([
@@ -967,8 +1023,14 @@ __decorate([
     vtyx.Prop()
 ], SelecticStore.prototype, "getItemsCallback", void 0);
 __decorate([
+    vtyx.Prop({ default: false })
+], SelecticStore.prototype, "keepOpenWithOtherSelectic", void 0);
+__decorate([
     vtyx.Watch('options')
 ], SelecticStore.prototype, "onOptionsChange", null);
+__decorate([
+    vtyx.Watch('childOptions')
+], SelecticStore.prototype, "onChildOptionsChange", null);
 __decorate([
     vtyx.Watch('value')
 ], SelecticStore.prototype, "onValueChange", null);
@@ -2048,6 +2110,84 @@ let Selectic$1 = class Selectic extends vtyx.Vue {
             this.store.commit('isOpen', false);
         }, 0);
     }
+    extractFromNode(node, text = '') {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        function styleToString(staticStyle) {
+            if (!staticStyle) {
+                return;
+            }
+            let styles = [];
+            for (const [key, value] of Object.entries(staticStyle)) {
+                styles.push(`${key}: ${value}`);
+            }
+            return styles.join(';');
+        }
+        const domProps = (_a = node.data) === null || _a === void 0 ? void 0 : _a.domProps;
+        const attrs = (_b = node.data) === null || _b === void 0 ? void 0 : _b.attrs;
+        const id = (_h = (_f = (_d = (_c = domProps) === null || _c === void 0 ? void 0 : _c.value, (_d !== null && _d !== void 0 ? _d : (_e = attrs) === null || _e === void 0 ? void 0 : _e.value)), (_f !== null && _f !== void 0 ? _f : (_g = attrs) === null || _g === void 0 ? void 0 : _g.id)), (_h !== null && _h !== void 0 ? _h : text));
+        const className = (_j = node.data) === null || _j === void 0 ? void 0 : _j.staticClass;
+        const style = styleToString((_k = node.data) === null || _k === void 0 ? void 0 : _k.staticStyle);
+        const optVal = {
+            id,
+            text,
+            className,
+            style,
+        };
+        if (attrs) {
+            for (const [key, val] of Object.entries(attrs)) {
+                switch (key) {
+                    case 'title':
+                        optVal.title = val;
+                        break;
+                    case 'disabled':
+                        if (val === false) {
+                            optVal.disabled = false;
+                        }
+                        else {
+                            optVal.disabled = true;
+                        }
+                        break;
+                    case 'group':
+                        optVal.group = val;
+                        break;
+                    case 'icon':
+                        optVal.icon = val;
+                        break;
+                    case 'data':
+                        optVal.data = val;
+                        break;
+                    default:
+                        if (key.startsWith('data')) {
+                            if (typeof optVal.data !== 'object') {
+                                optVal.data = {};
+                            }
+                            optVal.data[key.slice(5)] = val;
+                        }
+                }
+            }
+        }
+        return optVal;
+    }
+    extractOptionFromNode(node) {
+        const children = node.children;
+        const text = (children && children[0].text || '').trim();
+        return this.extractFromNode(node, text);
+    }
+    extractOptgroupFromNode(node) {
+        var _a, _b;
+        const attrs = (_a = node.data) === null || _a === void 0 ? void 0 : _a.attrs;
+        const children = node.children || [];
+        const text = ((_b = attrs) === null || _b === void 0 ? void 0 : _b.label) || '';
+        const options = [];
+        for (const child of children) {
+            if (child.tag === 'option') {
+                options.push(this.extractOptionFromNode(child));
+            }
+        }
+        const opt = this.extractFromNode(node, text);
+        opt.options = options;
+        return opt;
+    }
     /* }}} */
     /* {{{ Life cycle */
     created() {
@@ -2085,6 +2225,25 @@ let Selectic$1 = class Selectic extends vtyx.Vue {
     }
     mounted() {
         setTimeout(() => this.computeOffset(), 0);
+    }
+    beforeUpdate() {
+        const elements = this.$slots.default;
+        if (!elements) {
+            this.store.childOptions = [];
+            return;
+        }
+        const options = [];
+        for (const node of elements) {
+            if (node.tag === 'option') {
+                const prop = this.extractOptionFromNode(node);
+                options.push(prop);
+            }
+            else if (node.tag === 'optgroup') {
+                const prop = this.extractOptgroupFromNode(node);
+                options.push(prop);
+            }
+        }
+        this.store.childOptions = options;
     }
     beforeDestroy() {
         this.removeListeners();
