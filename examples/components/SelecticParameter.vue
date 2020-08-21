@@ -16,6 +16,16 @@
         </label>
         <br>
         <label>
+            Dynamics options
+            <span class="info" title="only apply at component creation">(at creation)</span>
+            <Selectic
+                :value="dynOptionsVal"
+                :options="dynOptions"
+                @change="(val) => dynOptionsVal = val"
+            />
+        </label>
+        <br>
+        <label>
             title <input type="text" v-model="optionTitle">
         </label>
         <label>
@@ -195,6 +205,52 @@
                     @change="(val) => optionParams.listPosition = val"
                 />
             </label>
+            <label>
+                optionBehavior
+                <span class="info" title="only apply at component creation">(at creation)</span>
+                <div class="half">
+                    <Selectic
+                        :value="optionBehaviorOperation"
+                        :options="[{
+                            id: 'sort',
+                            text: 'sort',
+                        }, {
+                            id: 'force',
+                            text: 'force',
+                        }]"
+                        :params="{
+                            allowClearSelection: true,
+                        }"
+                        @change="(val) => optionBehaviorOperation = val"
+                    />
+                    <Selectic
+                        :value="optionBehaviorOrder"
+                        :options="[{
+                            id: 'ODE',
+                            text: 'ODE',
+                        }, {
+                            id: 'OED',
+                            text: 'OED',
+                        }, {
+                            id: 'DOE',
+                            text: 'DOE',
+                        }, {
+                            id: 'DEO',
+                            text: 'DEO',
+                        }, {
+                            id: 'EOD',
+                            text: 'EOD',
+                        }, {
+                            id: 'EDO',
+                            text: 'EDO',
+                        }]"
+                        :params="{
+                            allowClearSelection: true,
+                        }"
+                        @change="(val) => optionBehaviorOrder = val"
+                    />
+                </div>
+            </label>
         </details>
         <hr>
         <button @click="redraw">
@@ -214,8 +270,10 @@
             :multiple="multiple"
             :disabled="disabled"
             :params="optionParams"
+
             @change="(val) => optionValue = val"
         />
+        <label>Selected value: <output>{{JSON.stringify(optionValue)}}</output></label>
     </fieldset>
     <fieldset>
         <legend>
@@ -262,6 +320,109 @@ const shortStringOptions = [{
     text: 'Fourth option',
 }];
 
+const dynOptions = [{
+    id: '',
+    text: 'no dynamic options',
+}, {
+    id: 0,
+    text: '0 items (empty list)',
+}, {
+    id: 10,
+    text: '10 items',
+}, {
+    id: 100,
+    text: '100 items',
+}, {
+    id: 1000,
+    text: '1000 items',
+}, {
+    id: 10000,
+    text: '10.000 items',
+}];
+
+function sleep(time) {
+    return Promise((resolve) => {
+        setTimeout(resolve, time);
+    });
+}
+
+function getDynId(id) {
+    const [prefix, val] = id.toString().split('-');
+
+    if (prefix !== 'dyn') {
+        return -1;
+    }
+    return +val;
+}
+
+const buildFetchCallback = function(val, delay = 0) {
+    return async function(search, offset, pageSize) {
+        // simulate a backend computation
+        let total = val;
+        let result = [];
+        let sample;
+
+        if (search) {
+            sample = [];
+            const rgx = new RegExp(search.replace(/([-+\[\]\(\){}?^$.])/g, '\$1').replace(/[*]/g, '.*'), 'i');
+            for (let idx = offset; idx < val; idx++) {
+                const text = `Dynamic option: ${idx}`;
+                if (rgx.test(text)) {
+                    sample.push({
+                        id: `dyn-${idx}`,
+                        text: text,
+                    });
+                }
+            }
+            total = sample.length;
+        }
+
+        if (offset < total) {
+            for (let idx = offset; idx < total && idx < offset + pageSize; idx++) {
+                if (search) {
+                    result.push(sample[idx - offset]);
+                } else {
+                    const text = `Dynamic option: ${idx}`;
+                    result.push({
+                        id: `dyn-${idx}`,
+                        text: text,
+                    });
+                }
+            }
+        }
+
+        if (delay) {
+            await sleep(delay);
+        }
+        return {
+            total: total,
+            result: result,
+        };
+    };
+};
+
+const buildGetItemsCallback = function(val, delay = 0) {
+    return async function(ids) {
+        let result = ids.reduce((rslt, id) => {
+            const dynId = getDynId(id);
+            if (dynId >= 0 && dynId < val) {
+                rslt.push({
+                    id: id,
+                    text: `Dynamic option: ${id}`,
+                });
+            }
+            return rslt;
+        }, []);
+
+        if (delay) {
+            await sleep(delay);
+        }
+
+        return result;
+    };
+};
+
+
 const longLength = 1500;
 const longNumOptions = new Array(longLength);
 const longStringOptions = new Array(longLength);
@@ -299,6 +460,9 @@ export default {
                 allowRevert: undefined,
                 emptyValue: undefined,
                 listPosition: undefined,
+                fetchCallback: undefined,
+                getItemsCallback: undefined,
+                optionBehavior: undefined,
             },
             optionType: 'longNumOptions',
             optionList: [{
@@ -322,6 +486,10 @@ export default {
                 text: `long with numerical id (${longNumOptions.length} items)`,
                 values: longNumOptions,
             }],
+            dynOptionsVal: '',
+            dynOptions: dynOptions,
+            optionBehaviorOperation: '',
+            optionBehaviorOrder: '',
         };
     },
     computed: {
@@ -358,6 +526,13 @@ export default {
                         val = `'${param}'`;
                     }
 
+                    if (key === 'fetchCallback') {
+                        val = 'fetchOptionsCb';
+                    }
+                    if (key === 'getItemsCallback') {
+                        val = 'fetchIdsCb';
+                    }
+
                     list.push(`    ${key}: ${val},`)
                 }
 
@@ -382,6 +557,18 @@ export default {
                 this.draw = true;
             }, 10);
         },
+        buildOptionBehavior() {
+            const optionBehaviorOrder = this.optionBehaviorOrder;
+            const optionBehaviorOperation = this.optionBehaviorOperation;
+
+            if (!optionBehaviorOrder || !optionBehaviorOperation) {
+                this.optionBehaviorOrder = '';
+                this.optionBehaviorOperation = '';
+                this.optionParams.optionBehavior = undefined;
+            } else {
+                this.optionParams.optionBehavior = `${optionBehaviorOperation}-${optionBehaviorOrder}`;
+            }
+        },
     },
     watch: {
         'optionParams.selectionOverflow'() {
@@ -395,6 +582,28 @@ export default {
                 return;
             }
             this.errorSelectionOverflow = '';
+        },
+        dynOptionsVal() {
+            const val = this.dynOptionsVal;
+            if (val === '') {
+                this.optionParams.fetchCallback = undefined;
+                this.optionParams.getItemsCallback = undefined;
+            } else {
+                this.optionParams.fetchCallback = buildFetchCallback(val);
+                this.optionParams.getItemsCallback = buildGetItemsCallback(val);
+            }
+        },
+        optionBehaviorOrder() {
+            if (!this.optionBehaviorOperation) {
+                this.optionBehaviorOperation = 'sort';
+            }
+            this.buildOptionBehavior();
+        },
+        optionBehaviorOperation() {
+            if (!this.optionBehaviorOrder) {
+                this.optionBehaviorOrder = 'ODE';
+            }
+            this.buildOptionBehavior();
         },
     },
     components: {
@@ -413,5 +622,10 @@ export default {
 }
 .has-error {
     border-color: red;
+}
+.half {
+    display: grid;
+    grid-template: max-content / 1fr 1fr;
+    grid-column-gap: 15px;
 }
 </style>
