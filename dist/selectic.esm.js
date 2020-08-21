@@ -1954,13 +1954,15 @@ let Selectic$1 = class Selectic extends Vue {
             window.addEventListener('resize', this.windowResize, false);
             document.addEventListener('click', this.outsideListener, true);
             this.computeOffset();
+            this.$emit('open', this);
         }
         else {
             this.removeListeners();
             if (state.status.hasChanged) {
-                this.$emit('change', this.getValue(), state.selectionIsExcluded);
+                this.$emit('change', this.getValue(), state.selectionIsExcluded, this);
                 this.store.resetChange();
             }
+            this.$emit('close', this);
         }
     }
     compareValues(oldValue, newValue) {
@@ -2013,9 +2015,9 @@ let Selectic$1 = class Selectic extends Vue {
         const canTrigger = oldValue !== undefined && !areSimilar;
         if (canTrigger) {
             const selectionIsExcluded = this.store.state.selectionIsExcluded;
-            this.$emit('input', value, selectionIsExcluded);
+            this.$emit('input', value, selectionIsExcluded, this);
             if (!this.isFocused) {
-                this.$emit('change', value, selectionIsExcluded);
+                this.$emit('change', value, selectionIsExcluded, this);
                 this.store.resetChange();
             }
         }
@@ -2091,7 +2093,7 @@ let Selectic$1 = class Selectic extends Vue {
                     blur: this.checkFocus,
                 } }),
             h(MainInput, { store: this.store, id: id, on: {
-                    'item:click': (id) => this.$emit('item:click', id),
+                    'item:click': (id) => this.$emit('item:click', id, this),
                 }, ref: "mainInput" }),
             this.isFocused && (h(ExtendedList$1, { store: this.store, offsetTop: this.offsetTop, offsetBottom: this.offsetBottom, offsetLeft: this.offsetLeft, width: this.width, ref: "extendedList" }))));
     }
