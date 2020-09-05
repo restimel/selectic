@@ -26,6 +26,15 @@
         </label>
         <br>
         <label>
+            Child element options
+            <Selectic
+                :value="innerElementOptionsVal"
+                :options="innerElementOptions"
+                @change="(val) => innerElementOptionsVal = val"
+            />
+        </label>
+        <br>
+        <label>
             title <input type="text" v-model="optionTitle">
         </label>
         <label>
@@ -265,6 +274,7 @@
             class="example"
             :options="options"
             :value="optionValue"
+            :groups="groups"
             :placeholder="optionPlaceholder"
             :title="optionTitle"
             :multiple="multiple"
@@ -272,7 +282,30 @@
             :params="optionParams"
 
             @change="(val) => optionValue = val"
-        />
+        >
+            <template v-if="innerElementOptionsVal > 0">
+                <option v-for="opt of innerElementOptionList"
+                    :value="opt.id"
+                    :key="opt.id"
+                >
+                    {{opt.text}}
+                </option>
+            </template>
+            <template v-if="innerElementOptionsVal < 0">
+                <optgroup v-for="gp of innerElementGroupOptionList"
+                    :value="gp.id"
+                    :label="gp.text"
+                    :key="gp.id"
+                >
+                    <option v-for="opt of gp.options"
+                        :value="opt.id"
+                        :key="opt.id"
+                    >
+                        {{opt.text}}
+                    </option>
+                </optgroup>
+            </template>
+        </Selectic>
         <label>Selected value: <output>{{JSON.stringify(optionValue)}}</output></label>
     </fieldset>
     <fieldset>
@@ -285,6 +318,20 @@
 </template>
 <script>
 import Selectic from '../../dist/selectic.esm.js';
+
+const longLength = 1500;
+const longNumOptions = new Array(longLength);
+const longStringOptions = new Array(longLength);
+for (let i = 0; i < longLength; i++) {
+    longNumOptions[i] = {
+        id: i,
+        text: `option #${i}`,
+    };
+    longStringOptions[i] = {
+        id: `id-${i}`,
+        text: `option "${i}"`,
+    };
+}
 
 const emptyOptions = [];
 const oneOptions = [{
@@ -319,6 +366,23 @@ const shortStringOptions = [{
     id: 'fourth',
     text: 'Fourth option',
 }];
+const groupOptions = [{
+    id: 'shortInt',
+    text: 'short with numerical id',
+    options: shortNumOptions,
+}, {
+    id: 'shortStr',
+    text: 'short with string id',
+    options: shortStringOptions,
+}, {
+    id: 'longInt',
+    text: 'long with numerical id',
+    options: longNumOptions,
+}, {
+    id: 'longStr',
+    text: 'long with string id',
+    options: longStringOptions,
+}];
 
 const dynOptions = [{
     id: '',
@@ -338,6 +402,23 @@ const dynOptions = [{
 }, {
     id: 10000,
     text: '10.000 items',
+}, {
+    id: -5,
+    text: '100 items in 5 groups',
+}];
+
+const innerElementOptions = [{
+    id: 0,
+    text: 'no inner element options',
+}, {
+    id: 2,
+    text: '2 items',
+}, {
+    id: 10,
+    text: '10 items',
+}, {
+    id: -4,
+    text: '20 items in 4 groups',
 }];
 
 function sleep(time) {
@@ -355,7 +436,13 @@ function getDynId(id) {
     return +val;
 }
 
-const buildFetchCallback = function(val, delay = 0) {
+const nbItemPerDynGroup = 20;
+const buildFetchCallback = function(optionVal, delay = 0) {
+    let val = Math.abs(optionVal);
+    if (optionVal < 0) {
+        val *= nbItemPerDynGroup;
+    }
+
     return async function(search, offset, pageSize) {
         // simulate a backend computation
         let total = val;
@@ -368,10 +455,14 @@ const buildFetchCallback = function(val, delay = 0) {
             for (let idx = offset; idx < val; idx++) {
                 const text = `Dynamic option: ${idx}`;
                 if (rgx.test(text)) {
-                    sample.push({
+                    const item = {
                         id: `dyn-${idx}`,
                         text: text,
-                    });
+                    };
+                    if (optionVal < 0) {
+                        item.group = `group${Math.floor(idx / nbItemPerDynGroup)}`;
+                    }
+                    sample.push(item);
                 }
             }
             total = sample.length;
@@ -383,10 +474,14 @@ const buildFetchCallback = function(val, delay = 0) {
                     result.push(sample[idx - offset]);
                 } else {
                     const text = `Dynamic option: ${idx}`;
-                    result.push({
+                    const item = {
                         id: `dyn-${idx}`,
                         text: text,
-                    });
+                    };
+                    if (optionVal < 0) {
+                        item.group = `group${Math.floor(idx / nbItemPerDynGroup)}`;
+                    }
+                    result.push(item);
                 }
             }
         }
@@ -401,7 +496,8 @@ const buildFetchCallback = function(val, delay = 0) {
     };
 };
 
-const buildGetItemsCallback = function(val, delay = 0) {
+const buildGetItemsCallback = function(optionVal, delay = 0) {
+    const val = Math.abs(optionVal);
     return async function(ids) {
         let result = ids.reduce((rslt, id) => {
             const dynId = getDynId(id);
@@ -421,21 +517,6 @@ const buildGetItemsCallback = function(val, delay = 0) {
         return result;
     };
 };
-
-
-const longLength = 1500;
-const longNumOptions = new Array(longLength);
-const longStringOptions = new Array(longLength);
-for (let i = 0; i < longLength; i++) {
-    longNumOptions[i] = {
-        id: i,
-        text: `option #${i}`,
-    };
-    longStringOptions[i] = {
-        id: `id-${i}`,
-        text: `option "${i}"`,
-    };
-}
 
 export default {
     name: 'Example',
@@ -464,7 +545,7 @@ export default {
                 getItemsCallback: undefined,
                 optionBehavior: undefined,
             },
-            optionType: 'longNumOptions',
+            optionType: 'shortNumOptions',
             optionList: [{
                 id: 'emptyOptions',
                 text: `empty option (${emptyOptions.length} items)`,
@@ -485,9 +566,20 @@ export default {
                 id: 'longNumOptions',
                 text: `long with numerical id (${longNumOptions.length} items)`,
                 values: longNumOptions,
+            }, {
+                id: 'longStrOptions',
+                text: `long with string id (${longStringOptions.length} items)`,
+                values: longStringOptions,
+            }, {
+                id: 'groupOptions',
+                text: `with groups (${groupOptions.length} groups)`,
+                values: groupOptions,
             }],
+            groups: undefined,
             dynOptionsVal: '',
             dynOptions: dynOptions,
+            innerElementOptions: innerElementOptions,
+            innerElementOptionsVal: 0,
             optionBehaviorOperation: '',
             optionBehaviorOrder: '',
         };
@@ -498,11 +590,51 @@ export default {
             const optionInfo = this.optionList.find((o) => o.id === optionType);
             return optionInfo && optionInfo.values || [];
         },
+        innerElementOptionList() {
+            const innerElementOptionsVal = this.innerElementOptionsVal;
+            if (innerElementOptionsVal > 0) {
+                const options = [];
+                for (let i = 0; i < innerElementOptionsVal; i++) {
+                    options.push({
+                        id: `element-${i}`,
+                        text: `Element #${i}`,
+                    });
+                }
+                return options;
+            }
+            return [];
+        },
+        innerElementGroupOptionList() {
+            const innerElementOptionsVal = this.innerElementOptionsVal;
+            if (innerElementOptionsVal < 0) {
+                const groups = [];
+                for (let i = 0; i < -innerElementOptionsVal; i++) {
+                    const options = [];
+                    for (let j = 0; j < 5; j++) {
+                        const id = i * 5 + j;
+                        options.push({
+                            id: `element-${id}`,
+                            text: `Element #${id}`,
+                        });
+                    }
+                    groups.push({
+                        id: `group-${i}`,
+                        text: `Group #${i}`,
+                        options: options,
+                    });
+                }
+                return groups;
+            }
+            return [];
+        },
         htmlSelectic() {
             const options = [
                 `:value="${JSON.stringify(this.optionValue).replace(/"/g, '\'')}"`,
                 `:options="${this.optionType}"`,
             ];
+            if (this.groups) {
+                options.push(`:groups="${JSON.stringify(this.groups)}"`);
+            }
             if (this.optionPlaceholder) {
                 options.push(`:placeholder="${this.optionPlaceholder}"`);
             }
@@ -542,10 +674,59 @@ export default {
                 options.push('', ':params="{', ...paramList, '}"');
             }
 
+            let endTag = '/>';
+            let innerElements = '';
+            const innerElementOptionsVal = this.innerElementOptionsVal;
+            if (innerElementOptionsVal) {
+                innerElements = ['>'];
+                endTag = '</Selectic>';
+                if (innerElementOptionsVal > 0) {
+                    for (let i = 0; i < innerElementOptionsVal; i++) {
+                        const id = i;
+                        const text = `Element #${i}`;
+                        innerElements.push(
+                            '    <option',
+                            `        :value="${id}"`,
+                            '    >',
+                            `        ${text}`,
+                            '    </option>'
+                        );
+                    }
+                } else {
+                    const nbGroup = -innerElementOptionsVal;
+                    for (let i = 0; i < nbGroup; i++) {
+                        const groupId = `group${i}`;
+                        const groupText = `Group #${i}`;
+                        innerElements.push(
+                            '    <optgroup',
+                            `        :value="${groupId}"`,
+                            `        label="${groupText}"`,
+                            '    >'
+                        );
+                        for (let j = 0; j < 5; j++) {
+                            const id = i * 5 + j;
+                            const text = `Element #${id}`;
+                            innerElements.push(
+                                '        <option',
+                                `            :value="${id}"`,
+                                '        >',
+                                `            ${text}`,
+                                '        </option>'
+                            );
+                        }
+                        innerElements.push(
+                            '    </optgroup>'
+                        );
+                    }
+                }
+                innerElements = innerElements.join('\n');
+            }
+
             const html = [
                 '<Selectic',
                 ...options.map(o => `    ${o}`),
-                '/>',
+                innerElements,
+                endTag,
             ];
             return html.join('\n');
         },
@@ -591,6 +772,19 @@ export default {
             } else {
                 this.optionParams.fetchCallback = buildFetchCallback(val);
                 this.optionParams.getItemsCallback = buildGetItemsCallback(val);
+                if (val < 0) {
+                    const nbGroup = -val;
+                    const groups = new Array(nbGroup);
+                    for (let i = 0; i < nbGroup; i++) {
+                        groups[i] = {
+                            id: `group${i}`,
+                            text: `group #${i}`,
+                        };
+                    }
+                    this.groups = groups;
+                } else {
+                    this.groups = undefined;
+                }
             }
         },
         optionBehaviorOrder() {

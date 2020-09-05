@@ -172,7 +172,7 @@
 }
 
 .selectic-item {
-    min-height: calc(var(--selectic-input-height) - 4px);
+    min-height: calc(var(--selectic-input-height) - 3px);
     padding: 2px 8px;
     display: block;
     box-sizing: border-box;
