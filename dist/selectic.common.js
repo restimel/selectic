@@ -2199,6 +2199,7 @@ let Selectic$1 = class Selectic extends vtyx.Vue {
                 disabled: this.disabled,
                 texts: this.texts,
                 groups: this.groups,
+                keepOpenWithOtherSelectic: !!this.params.keepOpenWithOtherSelectic,
                 params: {
                     multiple: this.multiple,
                     pageSize: this.params.pageSize || 100,
