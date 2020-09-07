@@ -55,6 +55,7 @@ It uses [VTYX](https://github.com/Intersec/vtyx) for strong typing.
 * Options to auto-disable the component when there is no options or only one
   mandatory option.
 * Handle selection overflow either by displaying a tag "+x more" either by adding several lines and show all selected options.
+* Possibility to open the component programatically.
 
 ## Documentation
 
